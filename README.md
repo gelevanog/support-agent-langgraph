@@ -8,6 +8,10 @@
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.141-009688?logo=fastapi&logoColor=white)
 ![License: MIT](https://img.shields.io/badge/License-MIT-green)
 
+https://github.com/user-attachments/assets/3d8bcd4e-ddef-4516-a5ff-18037db40625
+
+<sub>40-second walkthrough with voiceover. Can't play it? [Download the MP4](docs/demo.mp4).</sub>
+
 ## What problem it solves
 
 Support teams spend most of their day on the same handful of requests: "where is my order?", "I want a refund", "can you change my address?", "do you ship to Canada?". Each one means opening the order system, checking the policy, doing the action and writing a polite reply. Support Autopilot does that work for the routine cases: it reads the ticket, looks up the order and customer, applies your refund and shipping rules exactly as written, performs the action and drafts the reply. When something is risky (a large refund, a VIP customer, an angry message, an unverified sender) it pauses and puts the case in front of a person with one-click **Approve / Reject**. Every step is recorded, so you can always see why the agent did what it did.
