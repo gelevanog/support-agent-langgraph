@@ -2,6 +2,7 @@
 
 **An AI agent that resolves routine e-commerce support tickets end to end, follows your business rules to the letter, and asks a human before anything risky.**
 
+[![CI](https://github.com/gelevanog/support-agent-langgraph/actions/workflows/ci.yml/badge.svg)](https://github.com/gelevanog/support-agent-langgraph/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)
 ![LangGraph](https://img.shields.io/badge/LangGraph-1.2-1C3C3C)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.141-009688?logo=fastapi&logoColor=white)
@@ -24,7 +25,7 @@ Support teams spend most of their day on the same handful of requests: "where is
 - **Full audit trail**: every LLM output, tool call, rule result, approval and action is stored per ticket and shown in the UI, API and CLI.
 - **Three interfaces**: REST API (FastAPI + OpenAPI docs), an operator UI (Jinja2 + htmx) and a CLI with a live step-by-step trace (rich).
 - **Runs without API keys**: `LLM_PROVIDER=fake` is a deterministic chat model with the same tool-calling and structured-output interface, used by the tests, the demo and Docker.
-- **Production basics**: typed code (mypy strict), structured JSON logs, Docker image, GitLab CI (lint, test incl. Postgres, build).
+- **Production basics**: typed code (mypy strict), structured JSON logs, Docker image, GitHub Actions CI (lint, test incl. Postgres, build).
 
 ## Architecture
 
@@ -410,7 +411,7 @@ make lint    # ruff check, ruff format --check, mypy --strict
 | `test_graph.py` | All 8 scenarios end to end; interrupt -> approve and interrupt -> reject; resume after restart from the checkpoint; double review rejected; VIP / unverified sender / identity mismatch / unknown order; store conflict during execution -> escalation; LLM looking up the wrong order; LLM failure -> ticket marked failed |
 | `test_api.py` | REST endpoints, validation, 404/409, review queue filter, UI pages, form submit, htmx fragment and no-JS fallback |
 | `test_cli.py` | `run`, `example`, pause + approve in a separate invocation, `demo`, `show`, `graph` |
-| `test_postgres.py` | Pause and resume with the Postgres checkpointer (runs in GitLab CI with a Postgres service) |
+| `test_postgres.py` | Pause and resume with the Postgres checkpointer (runs in GitHub Actions CI with a Postgres service) |
 
 ## Adapting to your stack
 
