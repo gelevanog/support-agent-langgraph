@@ -1,0 +1,24 @@
+{% macro status_badge(status) -%}
+  {%- set s = status.value if status.value is defined else status -%}
+  <span class="badge badge-{{ s }}">{{ s | replace('_', ' ') }}</span>
+{%- endmacro %}
+
+{% macro outcome_badge(outcome) -%}
+  <span class="badge outcome-{{ outcome }}">{{ outcome | replace('_', ' ') }}</span>
+{%- endmacro %}
+
+{% macro review_form(t, htmx=false) -%}
+<form class="review-form" method="post"
+      {% if htmx %}hx-target="closest article" hx-swap="outerHTML"{% endif %}>
+  <div class="review-inputs">
+    <input name="operator" value="operator" aria-label="Operator name" placeholder="Operator">
+    <input name="note" aria-label="Internal note" placeholder="Internal note (optional)">
+  </div>
+  <div class="review-buttons">
+    <button class="btn btn-approve" formaction="/ui/tickets/{{ t.id }}/approve"
+            {% if htmx %}hx-post="/ui/tickets/{{ t.id }}/approve"{% endif %}>Approve</button>
+    <button class="btn btn-reject" formaction="/ui/tickets/{{ t.id }}/reject"
+            {% if htmx %}hx-post="/ui/tickets/{{ t.id }}/reject"{% endif %}>Reject</button>
+  </div>
+</form>
+{%- endmacro %}

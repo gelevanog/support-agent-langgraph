@@ -1,0 +1,11 @@
+{
+  "title": "Refund over $100 needs a human",
+  "description": "A $249 grinder. Everything else checks out, but the amount exceeds the auto-approve limit, so the graph pauses for an operator.",
+  "ticket": {
+    "channel": "email",
+    "customer_email": "ben.carter@example.com",
+    "subject": "Grinder stops after a few seconds",
+    "body": "The ProGrind grinder from order #1043 makes a loud scraping noise and shuts off after a few seconds. I'd like to return it for a refund."
+  },
+  "expected": {"verdict": "needs_approval", "status": "awaiting_approval", "after_approve": "refund_issued", "after_reject": "rejected_after_review"}
+}

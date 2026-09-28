@@ -1,0 +1,9 @@
+[
+  {"email": "anna.miller@example.com", "name": "Anna Miller", "tier": "standard", "customer_since": "2024-03-11", "orders_count": 4, "lifetime_value": "212.40"},
+  {"email": "ben.carter@example.com", "name": "Ben Carter", "tier": "standard", "customer_since": "2025-01-20", "orders_count": 2, "lifetime_value": "349.00"},
+  {"email": "chloe.nguyen@example.com", "name": "Chloe Nguyen", "tier": "vip", "customer_since": "2021-06-02", "orders_count": 27, "lifetime_value": "4180.75"},
+  {"email": "david.okafor@example.com", "name": "David Okafor", "tier": "standard", "customer_since": "2023-09-15", "orders_count": 3, "lifetime_value": "118.00"},
+  {"email": "emma.rossi@example.com", "name": "Emma Rossi", "tier": "standard", "customer_since": "2025-11-04", "orders_count": 1, "lifetime_value": "89.50"},
+  {"email": "farid.haddad@example.com", "name": "Farid Haddad", "tier": "standard", "customer_since": "2024-12-01", "orders_count": 2, "lifetime_value": "157.00"},
+  {"email": "grace.lee@example.com", "name": "Grace Lee", "tier": "standard", "customer_since": "2026-02-14", "orders_count": 1, "lifetime_value": "72.00"}
+]

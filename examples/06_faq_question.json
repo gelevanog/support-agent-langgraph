@@ -1,0 +1,11 @@
+{
+  "title": "FAQ: international shipping",
+  "description": "No order involved. The agent searches the knowledge base and answers from the matching article.",
+  "ticket": {
+    "channel": "web_form",
+    "customer_email": null,
+    "subject": "Shipping to Canada",
+    "body": "Do you ship to Canada? And how long does international shipping usually take?"
+  },
+  "expected": {"verdict": "inform", "status": "resolved", "resolution": "informed"}
+}

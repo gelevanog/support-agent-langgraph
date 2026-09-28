@@ -1,0 +1,11 @@
+{
+  "title": "Address change before shipment",
+  "description": "The order is still processing, so the address is updated automatically.",
+  "ticket": {
+    "channel": "email",
+    "customer_email": "grace.lee@example.com",
+    "subject": "Moving this week",
+    "body": "Hello, please update the delivery address for order #1047 to 12 Beacon Street, Apt 4, Boston, MA 02108. I'm moving this week."
+  },
+  "expected": {"verdict": "auto_approve", "status": "resolved", "resolution": "address_updated"}
+}

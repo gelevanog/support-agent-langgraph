@@ -1,0 +1,11 @@
+{
+  "title": "Address change after shipment",
+  "description": "The order already shipped, so the address rule denies the change; the reply points to a carrier redirect instead.",
+  "ticket": {
+    "channel": "email",
+    "customer_email": "farid.haddad@example.com",
+    "subject": "Wrong address",
+    "body": "Hi, I just realised I used my old address for order #1046. Could you please change the shipping address to 55 Lake Shore Drive, Chicago, IL 60611?"
+  },
+  "expected": {"verdict": "deny", "status": "resolved", "resolution": "denied"}
+}

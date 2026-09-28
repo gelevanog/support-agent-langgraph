@@ -1,0 +1,11 @@
+{
+  "title": "Refund outside the 30-day window",
+  "description": "Delivered 45 days ago. The refund window rule denies it and the reply explains why, politely.",
+  "ticket": {
+    "channel": "email",
+    "customer_email": "david.okafor@example.com",
+    "subject": "Return request",
+    "body": "Hello, I'd like to return the French press from order #1044, it's just not for me. Can I get a refund?"
+  },
+  "expected": {"verdict": "deny", "status": "resolved", "resolution": "denied"}
+}

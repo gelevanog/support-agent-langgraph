@@ -1,0 +1,11 @@
+{
+  "title": "Where is my order?",
+  "description": "Order has shipped; the agent answers with carrier and tracking number.",
+  "ticket": {
+    "channel": "chat",
+    "customer_email": "emma.rossi@example.com",
+    "subject": null,
+    "body": "Hi! Where is my order #1045? I ordered a kettle a few days ago and haven't heard anything."
+  },
+  "expected": {"verdict": "inform", "status": "resolved", "resolution": "informed"}
+}

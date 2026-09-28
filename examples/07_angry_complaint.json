@@ -1,0 +1,11 @@
+{
+  "title": "Angry complaint from a VIP",
+  "description": "Negative sentiment and a chargeback threat: escalated to the human queue with high priority, with an empathetic holding reply.",
+  "ticket": {
+    "channel": "email",
+    "customer_email": "chloe.nguyen@example.com",
+    "subject": "THIRD email about my espresso machine",
+    "body": "This is the THIRD time I'm writing about order #1048. The espresso machine was supposed to arrive two weeks ago, tracking hasn't moved in 10 days and nobody answers. This is completely unacceptable for a $1,299 machine and honestly the worst service I've had. Sort it out or I will dispute the charge with my bank."
+  },
+  "expected": {"verdict": "escalate", "status": "escalated", "resolution": "escalated"}
+}

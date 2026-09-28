@@ -1,0 +1,11 @@
+{
+  "title": "Refund under $100, within 30 days",
+  "description": "Delivered 5 days ago, $64.90, verified sender. All rules pass, so the refund is issued automatically.",
+  "ticket": {
+    "channel": "email",
+    "customer_email": "anna.miller@example.com",
+    "subject": "Broken pour-over set",
+    "body": "Hi, my order #1042 arrived yesterday but the glass carafe was cracked in the box. I'd like a refund please."
+  },
+  "expected": {"verdict": "auto_approve", "status": "resolved", "resolution": "refund_issued"}
+}

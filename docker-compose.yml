@@ -1,0 +1,20 @@
+# docker compose up  ->  http://localhost:8000  (operator UI at /ui, API docs at /docs)
+# Runs with LLM_PROVIDER=fake by default: no API keys needed.
+services:
+  app:
+    build: .
+    image: support-autopilot:latest
+    ports:
+      - "${APP_PORT:-8000}:8000"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      LLM_PROVIDER: ${LLM_PROVIDER:-fake}
+      DATABASE_URL: ${DATABASE_URL:-sqlite+aiosqlite:////app/data/support_agent.db}
+    volumes:
+      - app-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  app-data:

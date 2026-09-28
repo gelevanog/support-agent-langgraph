@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% from "partials/macros.html" import status_badge, outcome_badge, review_form %}
+{% block title %}{{ t.id }} - Support Autopilot{% endblock %}
+{% block content %}
+<a class="link back" href="/ui">&larr; Queue</a>
+<div class="ticket-head">
+  <h1 class="mono">{{ t.id }}</h1>
+  {{ status_badge(t.status) }}
+  <span class="muted">{{ t.channel.value | replace('_', ' ') }} &middot; {{ t.customer_email or "unverified sender" }} &middot; {{ t.created_at.strftime("%Y-%m-%d %H:%M UTC") }}</span>
+</div>
+
+<div class="detail">
+  <div class="detail-main">
+    <section class="panel">
+      <h3>Customer message</h3>
+      {% if t.subject %}<p class="subject">{{ t.subject }}</p>{% endif %}
+      <blockquote>{{ t.body }}</blockquote>
+    </section>
+
+    {% if t.analysis %}
+    <section class="panel">
+      <h3>Classification <span class="muted small">(LLM, structured output)</span></h3>
+      <dl class="facts">
+        <dt>Intent</dt><dd>{{ t.analysis.intent | replace('_', ' ') }}</dd>
+        <dt>Urgency</dt><dd>{{ t.analysis.urgency }}</dd>
+        <dt>Sentiment</dt><dd>{{ t.analysis.sentiment }}</dd>
+        <dt>Order</dt><dd>{{ ("#" ~ t.analysis.order_id) if t.analysis.order_id else "-" }}</dd>
+        {% if t.analysis.new_shipping_address %}<dt>New address</dt><dd>{{ t.analysis.new_shipping_address }}</dd>{% endif %}
+        <dt>Summary</dt><dd>{{ t.analysis.summary }}</dd>
+      </dl>
+    </section>
+    {% endif %}
+
+    {% if t.decision %}
+    <section class="panel">
+      <h3>Policy decision <span class="muted small">(deterministic rules)</span></h3>
+      <p class="verdict">
+        {{ outcome_badge(t.decision.verdict) }}
+        <span>action: <strong>{{ t.decision.action | replace('_', ' ') }}</strong></span>
+        {% if t.decision.refund_amount %}<span>amount: <strong>${{ t.decision.refund_amount }}</strong></span>{% endif %}
+      </p>
+      {% for e in t.audit if e.node == "human_approval" %}
+        <p class="review-note">Operator review: <strong>{{ e.message }}</strong></p>
+      {% endfor %}
+      <table class="rules">
+        <thead><tr><th>Rule</th><th>Outcome</th><th>Detail</th></tr></thead>
+        <tbody>
+        {% for c in t.decision.checks %}
+          <tr><td class="mono small">{{ c.rule_id }}</td><td>{{ outcome_badge(c.outcome) }}</td><td>{{ c.detail }}</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </section>
+    {% endif %}
+
+    {% if t.status.value == "awaiting_approval" %}
+    <section class="panel panel-attention">
+      <h3>Operator review</h3>
+      <ul class="reasons">
+        {% for r in (t.pending_approval or {}).get("reasons", []) %}<li>{{ r }}</li>{% endfor %}
+      </ul>
+      {{ review_form(t) }}
+    </section>
+    {% endif %}
+
+    {% if t.reply %}
+    <section class="panel">
+      <h3>Draft reply <span class="muted small">({{ (t.resolution or "") | replace('_', ' ') }})</span></h3>
+      <pre class="reply">{{ t.reply }}</pre>
+    </section>
+    {% endif %}
+
+    {% if t.error %}
+    <section class="panel panel-error"><h3>Error</h3><pre>{{ t.error }}</pre></section>
+    {% endif %}
+  </div>
+
+  <aside class="panel timeline">
+    <h3>Audit trail <span class="count">{{ t.audit | length }}</span></h3>
+    <ol>
+    {% for e in t.audit %}
+      <li class="event event-{{ e.kind.value }}">
+        <div class="event-head">
+          <span class="event-node mono">{{ e.node }}</span>
+          <span class="event-kind">{{ e.kind.value }}</span>
+          <span class="event-time muted small">{{ e.at.strftime("%H:%M:%S") }}</span>
+        </div>
+        <div class="event-msg">{{ e.message }}</div>
+        {% if e.data %}
+        <details><summary>data</summary><pre>{{ e.data | tojson(indent=2) }}</pre></details>
+        {% endif %}
+      </li>
+    {% endfor %}
+    </ol>
+  </aside>
+</div>
+{% endblock %}

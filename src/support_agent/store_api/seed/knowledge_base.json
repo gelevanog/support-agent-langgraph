@@ -1,0 +1,22 @@
+[
+  {"id": "KB-001", "title": "International shipping",
+   "content": "We ship to Canada, the United Kingdom, the European Union and Australia. International orders ship with DHL Express and arrive in 5-9 business days. Import duties and taxes are calculated at checkout, so there are no surprise fees on delivery."},
+  {"id": "KB-002", "title": "Domestic shipping times",
+   "content": "Orders placed before 2 pm ET ship the same business day. Standard US shipping takes 3-5 business days and is free on orders over $50. Express shipping (1-2 business days) is available at checkout."},
+  {"id": "KB-003", "title": "Returns and refund policy",
+   "content": "You can return any item within 30 days of delivery for a full refund, including opened coffee equipment. Damaged or defective items are refunded without needing to be sent back. Coffee beans are refundable if unopened."},
+  {"id": "KB-004", "title": "How long refunds take",
+   "content": "Once a refund is approved it is sent to the original payment method immediately. Banks usually show the credit within 3-5 business days; PayPal refunds appear within 24 hours."},
+  {"id": "KB-005", "title": "Warranty on machines and grinders",
+   "content": "Espresso machines and grinders carry a 2-year manufacturer warranty covering defects in materials and workmanship. Kettles and scales carry a 1-year warranty. Warranty claims are handled by our tier-2 support team."},
+  {"id": "KB-006", "title": "Changing or cancelling an order",
+   "content": "Orders can be changed or cancelled while they are still processing, usually within a few hours of purchase. Once an order has shipped, the shipping address can no longer be changed, but you can ask the carrier to redirect the parcel."},
+  {"id": "KB-007", "title": "Payment methods",
+   "content": "We accept Visa, Mastercard, American Express, PayPal, Apple Pay and Google Pay. Orders are charged when they ship, not when they are placed."},
+  {"id": "KB-008", "title": "Cleaning your burr grinder",
+   "content": "Run grinder cleaning tablets through the burrs once a month and brush out the chute weekly. Never wash burrs with water. Detailed cleaning guides are included in the box and on each product page."},
+  {"id": "KB-009", "title": "Tracking your order",
+   "content": "A tracking link is emailed as soon as your order ships. You can also track any order from the Orders page of your account. Tracking can take up to 24 hours to show the first scan."},
+  {"id": "KB-010", "title": "Gift cards",
+   "content": "Digital gift cards are delivered by email within minutes and never expire. Gift cards can be combined with other payment methods at checkout."}
+]

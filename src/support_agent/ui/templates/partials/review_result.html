@@ -1,0 +1,10 @@
+{% from "partials/macros.html" import status_badge %}
+<article class="card card-done">
+  <div class="card-head">
+    <a class="mono" href="/ui/tickets/{{ t.id }}">{{ t.id }}</a>
+    {{ status_badge(t.status) }}
+  </div>
+  <p class="muted">{{ t.audit | selectattr("kind", "equalto", "approval") | map(attribute="message") | list | last }}
+     &rarr; {{ (t.resolution or "") | replace('_', ' ') }}</p>
+  <a class="link" href="/ui/tickets/{{ t.id }}">View audit trail &rarr;</a>
+</article>

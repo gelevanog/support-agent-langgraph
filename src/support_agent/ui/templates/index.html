@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% from "partials/macros.html" import status_badge, review_form %}
+{% block content %}
+<section class="stats">
+  {% for s in ["awaiting_approval", "resolved", "escalated", "failed"] %}
+  <div class="stat">
+    <span class="stat-value">{{ counts.get(s, 0) }}</span>
+    <span class="stat-label">{{ s | replace('_', ' ') }}</span>
+  </div>
+  {% endfor %}
+  <div class="stat stat-provider">
+    <span class="stat-value mono">{{ provider }}</span>
+    <span class="stat-label">LLM provider</span>
+  </div>
+</section>
+
+<section>
+  <h2>Awaiting approval <span class="count">{{ pending | length }}</span></h2>
+  {% if not pending %}
+    <p class="empty">Nothing to review. Tickets that need a human decision will appear here.</p>
+  {% endif %}
+  <div class="grid">
+  {% for t in pending %}
+    {% set p = t.pending_approval or {} %}
+    <article class="card">
+      <div class="card-head">
+        <a class="mono" href="/ui/tickets/{{ t.id }}">{{ t.id }}</a>
+        <span class="muted">{{ t.customer_email or "unverified sender" }}</span>
+      </div>
+      <p class="summary">{{ p.summary }}</p>
+      <div class="proposal">
+        <span class="proposal-action">{{ p.action | replace('_', ' ') }}</span>
+        {% if p.refund_amount %}<span class="proposal-amount">${{ p.refund_amount }}</span>{% endif %}
+        {% if p.new_shipping_address %}<span class="muted">to {{ p.new_shipping_address }}</span>{% endif %}
+      </div>
+      <ul class="reasons">
+        {% for r in p.reasons %}<li>{{ r }}</li>{% endfor %}
+      </ul>
+      <details>
+        <summary>Customer message</summary>
+        <blockquote>{{ t.body }}</blockquote>
+      </details>
+      {{ review_form(t, htmx=true) }}
+    </article>
+  {% endfor %}
+  </div>
+</section>
+
+<section class="two-col">
+  <div>
+    <h2>Submit a ticket</h2>
+    <form class="panel submit-form" method="post" action="/ui/tickets">
+      {% if examples %}
+      <label>Load an example
+        <select id="example-picker">
+          <option value="">Choose a demo scenario...</option>
+          {% for ex in examples %}
+          <option value="{{ loop.index0 }}">{{ ex.title }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      {% endif %}
+      <div class="row">
+        <label>Sender email <input name="customer_email" type="email" placeholder="verified sender (optional)"></label>
+        <label>Channel
+          <select name="channel">
+            {% for c in channels %}<option value="{{ c.value }}">{{ c.value | replace('_', ' ') }}</option>{% endfor %}
+          </select>
+        </label>
+      </div>
+      <label>Subject <input name="subject" placeholder="Subject (optional)"></label>
+      <label>Message <textarea name="body" rows="5" required minlength="3"
+        placeholder="My order #1042 arrived broken, I want my money back"></textarea></label>
+      <button class="btn btn-primary" type="submit">Run agent</button>
+    </form>
+  </div>
+  <div>
+    <h2>Recent tickets</h2>
+    <div class="panel table-wrap">
+      <table>
+        <thead><tr><th>Ticket</th><th>Status</th><th>Intent</th><th>Outcome</th></tr></thead>
+        <tbody>
+        {% for r in recent %}
+          <tr>
+            <td><a class="mono" href="/ui/tickets/{{ r.id }}">{{ r.id }}</a><div class="muted small">{{ r.customer_email or "unverified" }}</div></td>
+            <td>{{ status_badge(r.status) }}</td>
+            <td>{{ (r.intent or "-") | replace('_', ' ') }}</td>
+            <td>{{ (r.resolution or r.verdict or "-") | replace('_', ' ') }}</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="4" class="empty">No tickets yet. Submit one or run <code>make demo</code>.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+{% if examples %}
+<script>
+  const EXAMPLES = {{ example_tickets | tojson }};
+  const picker = document.getElementById("example-picker");
+  picker.addEventListener("change", () => {
+    const ex = EXAMPLES[picker.value];
+    if (!ex) return;
+    const form = picker.closest("form");
+    form.elements.customer_email.value = ex.customer_email || "";
+    form.elements.subject.value = ex.subject || "";
+    form.elements.channel.value = ex.channel;
+    form.elements.body.value = ex.body;
+  });
+</script>
+{% endif %}
+{% endblock %}
