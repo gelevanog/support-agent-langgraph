@@ -20,16 +20,20 @@ Support teams spend most of their day on the same handful of requests: "where is
 
 ## Features
 
-- **Ticket triage with structured output**: intent, urgency, sentiment, order id, email and new address extracted into a validated Pydantic model (native JSON-schema mode on OpenAI and Anthropic).
+- **Ticket triage with structured output**: intent, urgency, sentiment, order id, email and new address extracted into a validated Pydantic model (native JSON-schema mode on OpenAI, Anthropic and OpenRouter).
 - **Agentic lookups**: the LLM decides which read-only tools to call (`get_order`, `get_customer`, `search_knowledge_base`) in a LangGraph tool loop.
+- **Semantic knowledge-base search with citations**: help-center articles are embedded and searched by vector similarity (in memory, or pgvector in Postgres with incremental re-indexing). Replies cite the articles they used, and the UI shows each article's score and whether the reply used it.
 - **Deterministic business rules**: refund window, auto-approve limit, VIP review, sentiment review, sender verification, "address change only before shipment". Plain Python, configurable via env vars, covered by boundary tests.
 - **Human-in-the-loop**: risky actions pause the graph with LangGraph `interrupt()`. State is persisted by the SQLite/Postgres checkpointer and resumed with `Command(resume=...)` when an operator approves or rejects, even after a restart.
 - **Safe by construction**: the model can only *read*. Refunds, address changes and escalations are executed by code after the rules (and, if needed, a human) approve them.
 - **Grounded replies**: the reply is drafted from an explicit, whitelisted context (decision, order facts, KB articles). Internal notes never reach the customer.
 - **Full audit trail**: every LLM output, tool call, rule result, approval and action is stored per ticket and shown in the UI, API and CLI.
 - **Three interfaces**: REST API (FastAPI + OpenAPI docs), an operator UI (Jinja2 + htmx) and a CLI with a live step-by-step trace (rich).
+- **Any model, one switch**: OpenAI, Anthropic, or any of hundreds of models through [OpenRouter](https://openrouter.ai) with a single key (`LLM_PROVIDER=openrouter`).
 - **Runs without API keys**: `LLM_PROVIDER=fake` is a deterministic chat model with the same tool-calling and structured-output interface, used by the tests, the demo and Docker.
-- **Production basics**: typed code (mypy strict), structured JSON logs, Docker image, GitHub Actions CI (lint, test incl. Postgres, build).
+- **Evaluation suite**: 40 labelled tickets scored for intent, decision, action and retrieval accuracy, plus an LLM-as-judge for groundedness, tone and policy compliance, with token and cost accounting. Runs in CI on the fake models, and on any real model with your key ([results below](#evaluation)).
+- **Tracing**: OpenTelemetry spans per ticket, graph node, LLM call (GenAI conventions, token usage) and tool call, exported to the console or any OTLP backend; LangSmith works through LangChain's own variables.
+- **Production basics**: typed code (mypy strict), structured JSON logs, Docker image, GitHub Actions CI (lint, test incl. Postgres + pgvector, eval smoke run, build).
 
 ## Architecture
 
@@ -262,9 +266,19 @@ ANTHROPIC_API_KEY=sk-ant-...
 LLM_PROVIDER=openai
 OPENAI_API_KEY=sk-...
 OPENAI_MODEL=gpt-5-mini
+
+# or OpenRouter: one key for OpenAI, Anthropic, Google, DeepSeek, Qwen, ... models
+LLM_PROVIDER=openrouter
+OPENROUTER_API_KEY=sk-or-...
+OPENROUTER_MODEL=openai/gpt-5.4-mini          # any "vendor/model" id from openrouter.ai/models
+
+# Real embeddings for the knowledge base (independent of the chat provider)
+EMBEDDINGS_PROVIDER=openrouter                 # or openai (uses OPENAI_API_KEY)
+OPENROUTER_EMBEDDINGS_MODEL=openai/text-embedding-3-small
+POLICY_KB_MIN_SCORE=0.45                       # calibrated for text-embedding-3-small, see Evaluation
 ```
 
-Nothing else changes: the same graph, prompts, rules and tests. Structured output uses each provider's native JSON-schema mode (`output_config.format` on Anthropic, `response_format` on OpenAI), which works with reasoning models. No temperature is sent, because current Claude models reject sampling parameters. The automated tests run on the fake provider only; real providers are wired through `langchain-openai` / `langchain-anthropic` and need your own key to try.
+Nothing else changes: the same graph, prompts, rules and tests. Structured output uses each provider's native JSON-schema mode (`output_config.format` on Anthropic, `response_format` on OpenAI and OpenRouter), which works with reasoning models. No temperature is sent, because current Claude models reject sampling parameters. OpenRouter goes through the OpenAI client (`langchain-openai`) pointed at `OPENROUTER_BASE_URL`, so a self-hosted OpenAI-compatible gateway works the same way. The automated tests run on the fake provider only; the [evaluation](#evaluation) section shows a run on real models through OpenRouter.
 
 ## Business rules
 
@@ -284,11 +298,57 @@ All rules live in [`src/support_agent/rules/policy.py`](src/support_agent/rules/
 | `refund.sentiment_review` | refund | Sentiment is not negative | `needs_approval` |
 | `address.new_address_provided` | address change | A new address was extracted | `request_info` |
 | `address.before_shipment` | address change | Order is still `processing` | `deny` |
-| `kb.answer_found` | product question | Best knowledge-base match score >= 0.15 | `escalate` |
+| `kb.answer_found` | product question | Best knowledge-base match score >= **0.15** (fake embeddings; 0.45 for `text-embedding-3-small`) | `escalate` |
 | `complaint.escalation` | complaint | Sentiment not negative and urgency not high | `escalate` (high priority for VIP or high urgency) |
 | `fallback.unsupported_intent` | other | never | `escalate` |
 
 **Changing a rule.** Thresholds and toggles are environment variables (`POLICY_REFUND_WINDOW_DAYS`, `POLICY_AUTO_APPROVE_REFUND_LIMIT`, `POLICY_VIP_REFUNDS_REQUIRE_APPROVAL`, ...; see [Configuration](#configuration)), so changing the refund limit is a config change, not a prompt change. A new rule is a function plus one line in the intent's policy (e.g. `evaluate_refund`), plus a parametrized test in `tests/test_rules.py`. The rule id shows up automatically in the audit trail, the UI and the CLI.
+
+## Evaluation
+
+`make eval` runs 40 labelled tickets ([`evals/tickets.jsonl`](evals/tickets.jsonl)) through the real graph (rules, tools, checkpointer, approvals) and scores:
+
+- **Intent, decision and action accuracy** against labels, with an intent confusion matrix. Cases that pause for approval are approved or rejected by a scripted operator, as labelled.
+- **Retrieval**: expected help-center article in the top 3, at rank 1, and cited in the reply. Two questions the help center cannot answer check that the agent escalates instead of improvising.
+- **Reply quality**: an LLM judge scores groundedness, tone and policy compliance from 1 to 5 and explains each score. A reply passes with 4+ on every criterion.
+- **Usage**: LLM calls, tokens and cost (as reported by OpenRouter) for the agent and the judge.
+
+```bash
+make eval                                         # fake agent + deterministic fake judge, no keys (runs in CI)
+uv run python -m support_agent.evals \
+  --provider openrouter --judge openrouter --judge-model anthropic/claude-sonnet-5 \
+  --sample 20                                     # deterministic 20-case subset covering every intent
+uv run python -m support_agent.evals --case other-wholesale --case complaint-angry-vip   # re-check cases
+```
+
+Each case runs against a fresh mock store and its own SQLite file, so one case's refund never affects another. `--fail-under 0.85` exits non-zero when intent, decision or action accuracy drops below the bar (CI uses it), and the JSON report is written to `data/eval-report.json`.
+
+### Results
+
+| | Fake agent, all 40 cases | `openai/gpt-5.4-mini` via OpenRouter, 20-case subset |
+|---|---|---|
+| Retrieval | offline hashing embeddings | `openai/text-embedding-3-small` via OpenRouter |
+| Judge | deterministic rule-based judge | `anthropic/claude-sonnet-5` via OpenRouter |
+| Intent accuracy | 90.0% (36/40) | 90.0% (18/20) |
+| Decision (verdict) accuracy | 90.0% (36/40) | 90.0% (18/20) |
+| Action (resolution) accuracy | 90.0% (36/40) | 90.0% (18/20) |
+| KB article retrieved / top-1 / cited | 91.7% (11/12) each | 100% (2/2) each |
+| Cases with every check correct | 87.5% (35/40) | 90.0% (18/20) |
+| Replies passing the judge (4+ on all criteria) | 100% (40/40) | 95.0% (19/20) |
+| Judge means: groundedness / tone / policy | 5.00 / 5.00 / 5.00 | 4.95 / 4.65 / 4.85 |
+| LLM calls (agent + judge) | 165 + 40 | 80 + 20 |
+| Cost | $0 | $0.055 agent + $0.132 judge, about **$0.003 per ticket** for the agent |
+
+The fake agent is a keyword heuristic, so its misses are expected and stable; its job is to keep the pipeline and the metrics honest in CI. The real-model reports are in [`evals/reports/`](evals/reports).
+
+**What the real-model run caught.** Both misses were classification errors, and in both cases the rules then did exactly what they were told with the wrong intent:
+
+- *"This is the third time I'm chasing order #1048. Absolutely unacceptable service"* from a VIP was read as `order_status`, so the agent answered with tracking details instead of escalating an angry VIP.
+- A wholesale inquiry from a cafe was read as a `product_question`; the nearest article (bean subscriptions) cleared the relevance bar and the reply talked about subscriptions. The judge flagged it (tone 2, policy 3: "fails to actually address the customer's wholesale pricing question").
+
+The fix was two sentences in the intent definitions (angry chasing is a complaint; wholesale and partnership requests are `other`). Re-running those two cases plus the two nearest neighbours (a calm VIP order-status question and a mild complaint) gave 4/4 correct, all replies 5/5 from the judge. The full subset was not re-run, to stay within the call budget.
+
+**Calibrating the knowledge-base threshold.** Real embedding models score unrelated text much higher than the offline hashing embeddings, so `POLICY_KB_MIN_SCORE` must be set per embedding model. For `text-embedding-3-small`, the best match for the 12 answerable help-center questions scored 0.49 to 0.75, while the 2 unanswerable ones topped out at 0.41 and 0.37. The threshold of **0.45** sits in that gap; the default 0.15 is tuned for the hashing embeddings.
 
 ## Configuration
 
@@ -296,12 +356,18 @@ All settings come from environment variables or `.env` (see [`.env.example`](.en
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `LLM_PROVIDER` | `fake` | `fake`, `openai` or `anthropic` |
+| `LLM_PROVIDER` | `fake` | `fake`, `openai`, `anthropic` or `openrouter` |
 | `ANTHROPIC_MODEL` / `ANTHROPIC_API_KEY` | `claude-sonnet-5` / - | Anthropic settings |
 | `OPENAI_MODEL` / `OPENAI_API_KEY` | `gpt-5-mini` / - | OpenAI settings |
+| `OPENROUTER_MODEL` / `OPENROUTER_API_KEY` | `openai/gpt-5.4-mini` / - | OpenRouter settings (`vendor/model` ids) |
+| `OPENROUTER_BASE_URL` | `https://openrouter.ai/api/v1` | Any OpenAI-compatible endpoint |
 | `LLM_MAX_TOKENS` | `8192` | Max output tokens per call |
 | `LLM_TIMEOUT_SECONDS` | `90` | Per-request timeout (2 retries) |
 | `MAX_RESEARCH_STEPS` | `4` | Cap on tool-calling rounds |
+| `EMBEDDINGS_PROVIDER` | `fake` | `fake` (offline hashing embeddings), `openai` or `openrouter` |
+| `OPENAI_EMBEDDINGS_MODEL` / `OPENROUTER_EMBEDDINGS_MODEL` | `text-embedding-3-small` / `openai/text-embedding-3-small` | Embedding model per provider |
+| `EMBEDDINGS_DIMENSIONS` | `1536` | Vector size (max 2000 for the pgvector HNSW index) |
+| `KB_BACKEND` | `memory` | `memory` (rebuilt at startup) or `pgvector` (stored in `DATABASE_URL`, incremental sync) |
 | `DATABASE_URL` | `sqlite+aiosqlite:///./data/support_agent.db` | Tickets, audit trail and checkpoints. Postgres: `postgresql+psycopg://...` |
 | `STORE_API_URL` | empty | Empty = bundled mock Store API in-process; set to call a remote one |
 | `STORE_API_TIMEOUT_SECONDS` | `10` | HTTP timeout for the Store API |
@@ -315,12 +381,14 @@ All settings come from environment variables or `.env` (see [`.env.example`](.en
 | `STORE_NAME` | `Brewline Coffee` | Used in prompts and reply signature |
 | `EXAMPLES_DIR` | `examples` | Demo tickets for the CLI and UI |
 | `LOG_LEVEL` / `LOG_FORMAT` | `INFO` / `console` | `json` for one JSON object per line |
+| `OTEL_TRACES_EXPORTER` | `none` | `console` or `otlp` (needs the `tracing` extra and `OTEL_EXPORTER_OTLP_ENDPOINT`) |
+| `OTEL_SERVICE_NAME` | `support-autopilot` | Service name on exported spans |
 
 ## API
 
 | Method | Path | Description |
 |---|---|---|
-| `GET` | `/health` | Liveness, version, provider, ticket counts by status |
+| `GET` | `/health` | Liveness, version, provider and model, ticket counts by status |
 | `POST` | `/tickets` | Submit a ticket and run the agent until it resolves, escalates or pauses |
 | `GET` | `/tickets?status=awaiting_approval&limit=50` | List tickets (filter by `processing`, `awaiting_approval`, `resolved`, `escalated`, `failed`) |
 | `GET` | `/tickets/{id}` | Full state: classification, rule checks, decision, pending approval, reply, audit trail |
@@ -364,13 +432,18 @@ src/support_agent/
 │   └── builder.py        # StateGraph wiring and conditional edges
 ├── rules/policy.py       # deterministic business rules + PolicyConfig
 ├── llm/
-│   ├── factory.py        # LLM_PROVIDER switch, native structured output
+│   ├── factory.py        # LLM_PROVIDER switch (fake/OpenAI/Anthropic/OpenRouter), native structured output
 │   ├── prompts.py        # system prompts, <ticket>/<context> message builders
 │   └── fake.py           # deterministic offline BaseChatModel (tools + structured output)
 ├── tools/
 │   ├── client.py         # StoreClient: the adapter boundary (httpx)
 │   └── definitions.py    # LangChain tools (read-only for the LLM, write tools for code)
-├── store_api/            # mock Store API (FastAPI) + JSON seed data + TF-IDF knowledge-base search
+├── knowledge/
+│   ├── embeddings.py     # EMBEDDINGS_PROVIDER switch + deterministic hashing embeddings
+│   ├── memory.py         # in-process vector index
+│   └── pgvector.py       # Postgres + pgvector index (HNSW, incremental sync)
+├── evals/                # eval runner, metrics, LLM-as-judge (+ deterministic fake judge), usage/cost, CLI
+├── store_api/            # mock Store API (FastAPI) + JSON seed data (orders, customers, 15 help-center articles)
 ├── api/                  # REST API (FastAPI app factory, routes)
 ├── ui/                   # operator UI (Jinja2 templates, htmx, CSS)
 ├── service.py            # TicketService: submit / approve / reject, streams audit events
@@ -378,10 +451,14 @@ src/support_agent/
 ├── runtime.py            # wires settings -> store client, LLM, checkpointer, graph, service
 ├── models.py             # Pydantic domain models (Ticket, TicketAnalysis, PolicyDecision, AuditEvent, ...)
 ├── entities.py           # regex entity extraction used to validate LLM output
+├── tracing.py            # OpenTelemetry setup + LangChain callback (GenAI spans)
 ├── config.py             # pydantic-settings
 └── cli.py                # Typer + rich CLI
+evals/
+├── tickets.jsonl         # 40 labelled tickets (intent, verdict, resolution, expected KB article)
+└── reports/              # JSON reports of real-model runs
 examples/                 # 8 demo tickets with expected outcomes (used by tests)
-tests/                    # rules, store/tools, fake LLM, graph end-to-end, API/UI, CLI, Postgres
+tests/                    # rules, store/tools, fake LLM, graph end-to-end, API/UI, CLI, knowledge, evals, providers, tracing, Postgres
 ```
 
 ## Key design decisions
@@ -398,13 +475,16 @@ tests/                    # rules, store/tools, fake LLM, graph end-to-end, API/
 
 **Replies are grounded in an explicit context.** `draft_reply` receives a whitelisted context (resolution, order facts, refund reference, KB articles), not the whole state. Order details are withheld when the sender's identity is not confirmed, and operator notes never reach the customer (both tested). The prompt tells the model the decision is final and forbids promises the context does not contain.
 
+**Evaluate what has ground truth exactly, judge only the rest.** Intent, verdict, resolution and the retrieved article are compared with labels, so those scores are exact and reproducible. Only reply quality goes to an LLM judge, which sees the same whitelisted context as the reply writer and must explain every score. A different model family judges than writes (GPT agent, Claude judge in the run below) to avoid self-preference.
+
 **A fake model that implements the real interface.** `FakeSupportModel` subclasses LangChain's `BaseChatModel` and supports `bind_tools` and `with_structured_output`, so the whole graph (tool loop, interrupts, replies) runs in tests, CI and Docker without keys and with reproducible output.
 
 ## Testing
 
 ```bash
-make test    # 154 passed, 1 skipped (Postgres test runs when TEST_POSTGRES_URL is set)
+make test    # 216 tests; the 12 Postgres/pgvector ones are skipped unless TEST_POSTGRES_URL is set (CI sets it)
 make lint    # ruff check, ruff format --check, mypy --strict
+make eval    # 40 labelled tickets, fake agent + fake judge
 ```
 
 | Suite | What it covers |
@@ -415,7 +495,11 @@ make lint    # ruff check, ruff format --check, mypy --strict
 | `test_graph.py` | All 8 scenarios end to end; interrupt -> approve and interrupt -> reject; resume after restart from the checkpoint; double review rejected; VIP / unverified sender / identity mismatch / unknown order; store conflict during execution -> escalation; LLM looking up the wrong order; LLM failure -> ticket marked failed |
 | `test_api.py` | REST endpoints, validation, 404/409, review queue filter, UI pages, form submit, htmx fragment and no-JS fallback |
 | `test_cli.py` | `run`, `example`, pause + approve in a separate invocation, `demo`, `show`, `graph` |
-| `test_postgres.py` | Pause and resume with the Postgres checkpointer (runs in GitHub Actions CI with a Postgres service) |
+| `test_knowledge.py` | Hashing embeddings, retrieval ranking and scores on the memory and pgvector backends, incremental pgvector sync (only changed articles re-embedded, table rebuilt on a dimension change), unrelated queries below the threshold |
+| `test_evals.py` | Dataset integrity, deterministic judge findings, metrics, stratified sampling, usage/cost accounting, the eval CLI and its `--fail-under` gate |
+| `test_providers.py` | Every `LLM_PROVIDER` / `EMBEDDINGS_PROVIDER` builds a correctly configured client (OpenRouter endpoint, key, headers, plain-text embeddings) |
+| `test_tracing.py` | One trace per ticket run with node, LLM (GenAI attributes, token usage) and tool spans; interrupts recorded as events, LLM failures as errors; off by default; console exporter |
+| `test_postgres.py` | Pause and resume with the Postgres checkpointer (runs in GitHub Actions CI with a pgvector Postgres service) |
 
 ## Adapting to your stack
 
@@ -425,7 +509,7 @@ The agent depends only on `StoreClient` ([`tools/client.py`](src/support_agent/t
 |---|---|---|
 | Orders, refunds, address changes | Shopify, WooCommerce, BigCommerce | `get_order`, `create_refund`, `update_shipping_address` against the Admin API |
 | Customer profile and tier | HubSpot, Salesforce, Klaviyo | `get_customer` (map a VIP property or segment to `tier`) |
-| Knowledge base | Zendesk Guide, Gorgias, Notion | `search_knowledge_base` (keyword search or a vector index over help-center articles) |
+| Knowledge base | Zendesk Guide, Gorgias, Notion | `list_knowledge_articles` (the articles are embedded and indexed by the app; pgvector re-embeds only what changed) |
 | Inbound tickets and replies | Zendesk, Gorgias, Freshdesk, Intercom | Webhook -> `POST /tickets`; post `reply` back as a draft or public reply |
 | Escalation | Same helpdesk | `create_escalation` -> assign to a group, set priority, add a tag |
 
@@ -436,11 +520,10 @@ Business rules, prompts and the graph stay the same. Rules specific to your shop
 Not implemented yet; natural next steps for a production rollout:
 
 - Helpdesk connectors (Zendesk / Gorgias webhooks in, draft replies out) and a Shopify `StoreClient`.
-- Embedding-based knowledge-base retrieval (pgvector) with article citations in replies.
 - Operator authentication (SSO), roles, and approval notifications in Slack.
 - Background workers for LLM calls; tickets are currently processed inside the HTTP request.
-- Evaluation suite: labelled tickets for classification accuracy and LLM-as-judge for reply quality, plus tracing (LangSmith / OpenTelemetry).
 - Editable draft replies in the UI before sending; multilingual tickets.
+- Hybrid retrieval (keyword + vector) and a reranker once the help center grows past a few hundred articles.
 
 ## License
 
