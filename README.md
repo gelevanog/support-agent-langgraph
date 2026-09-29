@@ -8,9 +8,9 @@
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.141-009688?logo=fastapi&logoColor=white)
 ![License: MIT](https://img.shields.io/badge/License-MIT-green)
 
-https://github.com/user-attachments/assets/3d8bcd4e-ddef-4516-a5ff-18037db40625
+https://github.com/user-attachments/assets/e5e8af15-faf1-474d-b6f8-df6be27cb9cc
 
-<sub>40-second walkthrough with voiceover. Can't play it? [Download the MP4](docs/demo.mp4).</sub>
+<sub>41-second walkthrough with voiceover. Can't play it? [Download the MP4](docs/demo.mp4).</sub>
 
 ## What problem it solves
 
