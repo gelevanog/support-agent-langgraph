@@ -16,6 +16,8 @@ from support_agent.store_api.schemas import (
     Order,
 )
 
+SNIPPET_CHARS = 160
+
 
 def utcnow() -> datetime:
     return datetime.now(UTC)
@@ -112,7 +114,41 @@ class TicketAnalysis(BaseModel):
     summary: str = Field(description="One-sentence neutral summary of the request for the operator.")
 
 
+class ReplyDraft(BaseModel):
+    """The reply to the customer, written only from the facts in <context>."""
+
+    message: str = Field(
+        description=(
+            "Reply text: greeting and body, plain text. No signature and no list of article references; "
+            "both are appended automatically."
+        )
+    )
+    cited_article_ids: list[str] = Field(
+        description=(
+            "ids of the help-center articles from <context> (e.g. KB-001) whose information the reply uses. "
+            "Empty list if none."
+        )
+    )
+
+
 # --- Facts gathered from the store ----------------------------------------------------------
+
+
+class RetrievedArticle(KnowledgeArticle):
+    """A knowledge-base article returned by a search, with its relevance to the query."""
+
+    score: float = Field(description="Cosine similarity between query and article embeddings (higher is closer).")
+
+    @property
+    def snippet(self) -> str:
+        return snippet(self.content)
+
+
+def snippet(text: str, limit: int = SNIPPET_CHARS) -> str:
+    """First `limit` characters of `text`, cut at a word boundary."""
+    if len(text) <= limit:
+        return text
+    return text[:limit].rsplit(" ", 1)[0].rstrip(",.;:") + "..."
 
 
 class CaseFacts(BaseModel):
@@ -121,7 +157,7 @@ class CaseFacts(BaseModel):
     order: Order | None = None
     order_lookup_error: str | None = None
     customer: Customer | None = None
-    kb_articles: list[KnowledgeArticle] = Field(default_factory=list)
+    kb_articles: list[RetrievedArticle] = Field(default_factory=list)
     kb_searched: bool = False
 
 

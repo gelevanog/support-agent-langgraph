@@ -13,6 +13,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from support_agent.rules.policy import PolicyConfig
 
 LLMProvider = Literal["fake", "openai", "anthropic"]
+# Anthropic has no embeddings API, hence no "anthropic" option here.
+EmbeddingsProvider = Literal["fake", "openai"]
 
 
 class Settings(BaseSettings):
@@ -29,6 +31,15 @@ class Settings(BaseSettings):
     llm_max_tokens: int = Field(default=8192, ge=256)
     llm_timeout_seconds: float = Field(default=90.0, gt=0)
     max_research_steps: int = Field(default=4, ge=1, le=10)
+
+    # --- Knowledge-base retrieval ----------------------------------------------------------
+    # fake = deterministic hashing embeddings (offline); openai = OpenAI embeddings API.
+    embeddings_provider: EmbeddingsProvider = "fake"
+    openai_embeddings_model: str = "text-embedding-3-small"
+    # pgvector's HNSW index supports up to 2000 dimensions.
+    embeddings_dimensions: int = Field(default=1536, ge=64, le=2000)
+    # memory = in-process vector index; pgvector = vectors in the Postgres DATABASE_URL.
+    kb_backend: Literal["memory", "pgvector"] = "memory"
 
     # --- Persistence ---------------------------------------------------------------------
     # SQLAlchemy URL. Tickets, audit trail and LangGraph checkpoints share this database.

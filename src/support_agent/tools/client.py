@@ -96,8 +96,8 @@ class StoreClient:
         _raise_for_status(response)
         return Customer.model_validate(response.json())
 
-    async def search_knowledge_base(self, query: str, limit: int = 3) -> list[KnowledgeArticle]:
-        response = await self._http.get("/kb/search", params={"q": query, "limit": limit})
+    async def list_knowledge_articles(self) -> list[KnowledgeArticle]:
+        response = await self._http.get("/kb/articles")
         _raise_for_status(response)
         return _ARTICLES.validate_python(response.json())
 

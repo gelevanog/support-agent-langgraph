@@ -27,7 +27,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-postgres = ["langgraph-checkpoint-postgres", "psycopg[binary,pool]"]
+postgres = ["langgraph-checkpoint-postgres", "pgvector", "psycopg[binary,pool]"]
 
 [dependency-groups]
 dev = ["mypy", "pytest", "pytest-asyncio", "ruff"]

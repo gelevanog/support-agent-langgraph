@@ -1,4 +1,4 @@
-"""LangChain tools wrapping the Store API.
+"""LangChain tools wrapping the Store API and the knowledge base.
 
 Read-only tools (`get_order`, `get_customer`, `search_knowledge_base`) are bound to the LLM so
 it can decide what to look up. Write tools (`create_refund`, `update_shipping_address`,
@@ -20,8 +20,11 @@ from typing import Any
 from langchain_core.tools import BaseTool, tool
 from pydantic import BaseModel
 
+from support_agent.knowledge import KnowledgeBase
 from support_agent.store_api.schemas import EscalationPriority
 from support_agent.tools.client import StoreAPIError, StoreClient
+
+KB_SEARCH_LIMIT = 3
 
 ToolResult = tuple[str, dict[str, Any]]
 
@@ -53,7 +56,7 @@ class StoreTools:
         return [self.get_order, self.get_customer, self.search_knowledge_base]
 
 
-def build_store_tools(client: StoreClient) -> StoreTools:
+def build_store_tools(client: StoreClient, knowledge_base: KnowledgeBase) -> StoreTools:
     @tool(response_format="content_and_artifact")
     async def get_order(order_id: str) -> ToolResult:
         """Look up an order by its number (digits only, e.g. "1042").
@@ -75,14 +78,17 @@ def build_store_tools(client: StoreClient) -> StoreTools:
 
     @tool(response_format="content_and_artifact")
     async def search_knowledge_base(query: str) -> ToolResult:
-        """Search the store's help-center articles (shipping, returns, warranty, payments, care).
+        """Semantic search over the store's help-center articles (shipping, returns, warranty, payments,
+        subscriptions, care, invoices, parts).
 
-        Use a short natural-language query describing the customer's question.
+        Use a short natural-language query describing the customer's question. Returns the best
+        matches with id, title, a snippet and a relevance score between 0 and 1.
         """
-        try:
-            return _ok(await client.search_knowledge_base(query), "articles")
-        except StoreAPIError as exc:
-            return _error(exc)
+        hits = await knowledge_base.search(query, limit=KB_SEARCH_LIMIT)
+        # The model sees snippets; the full articles travel in the artifact and become facts.
+        content = {"articles": [{"id": h.id, "title": h.title, "snippet": h.snippet, "score": h.score} for h in hits]}
+        artifact = {"query": query, "articles": [h.model_dump(mode="json") for h in hits]}
+        return json.dumps(content, ensure_ascii=False), artifact
 
     @tool(response_format="content_and_artifact")
     async def create_refund(order_id: str, amount: str, reason: str) -> ToolResult:

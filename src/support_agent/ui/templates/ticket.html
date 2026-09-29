@@ -53,6 +53,31 @@
     </section>
     {% endif %}
 
+    {% if t.knowledge %}
+    <section class="panel">
+      <h3>Knowledge base <span class="muted small">(vector search, top {{ t.knowledge.articles | length }})</span></h3>
+      <p class="kb-query muted small">Query: &ldquo;{{ t.knowledge.query }}&rdquo;</p>
+      <table class="kb">
+        <thead><tr><th>Article</th><th>Score</th><th>In reply</th></tr></thead>
+        <tbody>
+        {% for a in t.knowledge.articles %}
+          <tr>
+            <td><span class="mono small">{{ a.id }}</span> <strong>{{ a.title }}</strong><div class="muted small">{{ a.snippet }}</div></td>
+            <td class="kb-score"><span class="mono">{{ "%.2f" | format(a.score) }}</span><span class="score-bar"><span style="width: {{ (a.score * 100) | round | int }}%"></span></span></td>
+            <td>
+              {% if a.cited %}<span class="badge badge-cited">cited</span>
+              {% elif a.in_reply_context %}<span class="badge badge-context">in context</span>
+              {% else %}<span class="badge">not used</span>{% endif %}
+            </td>
+          </tr>
+        {% else %}
+          <tr><td colspan="3" class="empty">No matching articles.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </section>
+    {% endif %}
+
     {% if t.status.value == "awaiting_approval" %}
     <section class="panel panel-attention">
       <h3>Operator review</h3>

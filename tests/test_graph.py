@@ -67,10 +67,34 @@ async def test_angry_complaint_escalates_with_high_priority(runtime: Runtime) ->
     assert "senior member of our support team" in (view.reply or "")
 
 
-async def test_faq_answer_is_grounded_in_knowledge_base(runtime: Runtime) -> None:
+async def test_faq_answer_is_grounded_in_knowledge_base_and_cites_it(runtime: Runtime) -> None:
     view = await runtime.service.submit(example("06").ticket)
-    assert "Canada" in (view.reply or "")
-    assert any(e.node == "lookup_tools" and "search_knowledge_base" in e.message for e in view.audit)
+    reply = view.reply or ""
+    assert "Canada" in reply
+    assert reply.endswith("See: International shipping [KB-001]\n\nBest regards,\nBrewline Coffee Support")
+    search = next(e for e in view.audit if e.node == "lookup_tools")
+    assert search.message.startswith("search_knowledge_base -> KB-001 (")
+    assert any("[KB-001]" in e.message for e in view.audit if e.kind is AuditKind.RULE)
+    assert view.audit[-1].message.endswith("cites KB-001)")
+    assert view.knowledge is not None
+    assert view.knowledge.query.startswith("Do you ship to Canada?")
+    top, *others = view.knowledge.articles
+    assert (top.id, top.cited, top.in_reply_context) == ("KB-001", True, True)
+    assert not any(a.cited for a in others)
+
+
+async def test_unanswerable_question_escalates_without_citations(runtime: Runtime) -> None:
+    view = await runtime.service.submit(TicketIn(body="Are you hiring baristas in Portland? Do you have openings?"))
+    assert view.resolution == "escalated"
+    assert "See:" not in (view.reply or "")
+    assert view.knowledge is not None
+    assert not any(a.in_reply_context for a in view.knowledge.articles)
+
+
+async def test_replies_without_articles_have_no_knowledge_section(runtime: Runtime) -> None:
+    view = await runtime.service.submit(example("01").ticket)
+    assert view.knowledge is None
+    assert "See:" not in (view.reply or "")
 
 
 # --- human in the loop -----------------------------------------------------------------------
@@ -213,6 +237,28 @@ async def test_policy_guard_ignores_records_the_llm_should_not_have_used(setting
         assert view.status is TicketStatus.AWAITING_APPROVAL
         assert view.pending_approval["refund_amount"] == "249.00"  # type: ignore[index]
         assert any("Policy guard fetched get_order" in e.message for e in view.audit)
+
+
+class MiscitingModel(FakeSupportModel):
+    """Drafts a reply that cites an article the rules never put in the reply context."""
+
+    def _generate(
+        self, messages: list[BaseMessage], stop: Any = None, run_manager: Any = None, **kwargs: Any
+    ) -> ChatResult:
+        result = super()._generate(messages, stop, run_manager, **kwargs)
+        message = result.generations[0].message
+        if isinstance(message, AIMessage) and message.tool_calls and message.tool_calls[0]["name"] == "ReplyDraft":
+            call = message.tool_calls[0]
+            call["args"]["cited_article_ids"] = [*call["args"]["cited_article_ids"], "KB-999"]
+        return result
+
+
+async def test_citations_outside_the_reply_context_are_dropped(settings: Settings) -> None:
+    async with create_runtime(settings, llm=MiscitingModel()) as rt:
+        view = await rt.service.submit(example("06").ticket)
+    assert "KB-999" not in (view.reply or "")
+    assert "[KB-001]" in (view.reply or "")
+    assert any("Dropped citations" in e.message and "KB-999" in e.message for e in view.audit)
 
 
 class FailingModel(FakeSupportModel):

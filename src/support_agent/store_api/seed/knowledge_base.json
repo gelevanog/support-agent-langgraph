@@ -18,5 +18,15 @@
   {"id": "KB-009", "title": "Tracking your order",
    "content": "A tracking link is emailed as soon as your order ships. You can also track any order from the Orders page of your account. Tracking can take up to 24 hours to show the first scan."},
   {"id": "KB-010", "title": "Gift cards",
-   "content": "Digital gift cards are delivered by email within minutes and never expire. Gift cards can be combined with other payment methods at checkout."}
+   "content": "Digital gift cards are delivered by email within minutes and never expire. Gift cards can be combined with other payment methods at checkout."},
+  {"id": "KB-011", "title": "Coffee bean subscriptions",
+   "content": "Bean subscriptions ship every 2, 4 or 6 weeks. You can pause, skip a delivery, change the roast or cancel at any time from the Subscriptions page of your account; changes made before the renewal date apply to the next shipment."},
+  {"id": "KB-012", "title": "Descaling your espresso machine",
+   "content": "Descale espresso machines every 2-3 months, or when the descale light comes on. Use a citric-acid descaler, run it through the boiler and steam wand, then flush with two full tanks of fresh water. Soft or filtered water reduces scale build-up."},
+  {"id": "KB-013", "title": "Discount codes and promotions",
+   "content": "One discount code can be used per order, entered at checkout. Codes cannot be applied to gift cards or to orders that have already been placed. Newsletter subscribers get 10% off their first order."},
+  {"id": "KB-014", "title": "Invoices and VAT receipts",
+   "content": "An invoice is attached to the shipping confirmation email. Business customers can add a company name and VAT number at checkout; to get a corrected invoice for an existing order, reply to the confirmation email with your company details."},
+  {"id": "KB-015", "title": "Replacement parts and accessories",
+   "content": "We stock replacement burrs, portafilter baskets, gaskets and carafes for the machines and grinders we sell, listed under Spare Parts on each product page. We do not sell parts for brands we don't carry."}
 ]

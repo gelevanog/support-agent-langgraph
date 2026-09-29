@@ -8,11 +8,8 @@ reproducible no matter when the project is run.
 from __future__ import annotations
 
 import json
-import math
-import re
 import threading
 import uuid
-from collections import Counter
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from importlib import resources
@@ -29,12 +26,6 @@ from support_agent.store_api.schemas import (
 )
 
 _SEED_PACKAGE = "support_agent.store_api.seed"
-_TOKEN_RE = re.compile(r"[a-z0-9]+")
-_STOPWORDS = frozenset(
-    "a an and are as at be but by can do does for from how i if in is it its me my of on or "
-    "our so that the their them there this to was we what when where which will with you your "
-    "hi hello thanks please would could".split()
-)
 
 
 class StoreError(Exception):
@@ -47,54 +38,6 @@ class NotFoundError(StoreError):
 
 class ConflictError(StoreError):
     pass
-
-
-def _tokenize(text: str) -> list[str]:
-    tokens = []
-    for token in _TOKEN_RE.findall(text.lower()):
-        if token in _STOPWORDS or len(token) < 2:
-            continue
-        # Cheap stemming so "refunds"/"refund", "shipping"/"ship" match.
-        for suffix in ("ing", "es", "s"):
-            if token.endswith(suffix) and len(token) - len(suffix) >= 3:
-                token = token[: -len(suffix)]
-                break
-        tokens.append(token)
-    return tokens
-
-
-class KnowledgeBaseIndex:
-    """Small TF-IDF keyword index. Good enough for a 10-article FAQ; swap for a vector DB at scale."""
-
-    def __init__(self, articles: list[KnowledgeArticle]) -> None:
-        self._articles = articles
-        self._docs = [Counter(_tokenize(f"{a.title} {a.title} {a.content}")) for a in articles]
-        n_docs = len(articles)
-        doc_freq: Counter[str] = Counter()
-        for doc in self._docs:
-            doc_freq.update(doc.keys())
-        self._idf = {term: math.log((1 + n_docs) / (1 + df)) + 1 for term, df in doc_freq.items()}
-        self._norms = [self._norm(self._weights(doc)) for doc in self._docs]
-
-    def _weights(self, counts: Counter[str]) -> dict[str, float]:
-        return {t: (1 + math.log(c)) * self._idf.get(t, 0.0) for t, c in counts.items()}
-
-    @staticmethod
-    def _norm(weights: dict[str, float]) -> float:
-        return math.sqrt(sum(w * w for w in weights.values())) or 1.0
-
-    def search(self, query: str, limit: int = 3) -> list[KnowledgeArticle]:
-        q_weights = self._weights(Counter(_tokenize(query)))
-        q_norm = self._norm(q_weights)
-        scored: list[tuple[float, KnowledgeArticle]] = []
-        for article, doc, d_norm in zip(self._articles, self._docs, self._norms, strict=True):
-            d_weights = self._weights(doc)
-            dot = sum(w * d_weights.get(t, 0.0) for t, w in q_weights.items())
-            score = dot / (q_norm * d_norm)
-            if score > 0:
-                scored.append((score, article))
-        scored.sort(key=lambda pair: pair[0], reverse=True)
-        return [a.model_copy(update={"score": round(s, 3)}) for s, a in scored[:limit]]
 
 
 def _load_seed(name: str) -> list[dict[str, Any]]:
@@ -119,7 +62,7 @@ class StoreRepository:
         self._lock = threading.Lock()
         self._orders = {o["id"]: _order_from_seed(o, self.today) for o in _load_seed("orders.json")}
         self._customers = {c["email"].lower(): Customer.model_validate(c) for c in _load_seed("customers.json")}
-        self._kb = KnowledgeBaseIndex([KnowledgeArticle.model_validate(a) for a in _load_seed("knowledge_base.json")])
+        self._kb = [KnowledgeArticle.model_validate(a) for a in _load_seed("knowledge_base.json")]
         self.refunds: list[Refund] = []
         self.escalations: list[Escalation] = []
 
@@ -135,8 +78,8 @@ class StoreRepository:
             raise NotFoundError(f"Customer {email} not found")
         return customer
 
-    def search_knowledge_base(self, query: str, limit: int = 3) -> list[KnowledgeArticle]:
-        return self._kb.search(query, limit=limit)
+    def list_knowledge_articles(self) -> list[KnowledgeArticle]:
+        return list(self._kb)
 
     def create_refund(self, order_id: str, amount: Decimal, reason: str) -> Refund:
         with self._lock:

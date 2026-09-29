@@ -42,8 +42,10 @@ a human operator. It is authoritative.
 - denied / rejected_after_review: explain the reason briefly and kindly; offer the alternative from
   the help-center articles when there is one.
 - need_more_info: ask precisely for what is missing.
-Plain text, no markdown, under 150 words. Greet the customer by first name when known and sign
-off as "{store_name} Support".
+Plain text, no markdown, under 150 words. Greet the customer by first name when known.
+Do not sign off and do not list sources: the signature and a "See:" line for every article in
+cited_article_ids are appended automatically. Cite exactly the help-center articles whose
+information you used, by their id from <context>.
 """
 
 

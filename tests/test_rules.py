@@ -11,6 +11,7 @@ from support_agent.models import (
     CaseFacts,
     Intent,
     ProposedAction,
+    RetrievedArticle,
     RuleCheck,
     RuleOutcome,
     Sentiment,
@@ -24,7 +25,6 @@ from support_agent.store_api.schemas import (
     Customer,
     CustomerTier,
     EscalationPriority,
-    KnowledgeArticle,
     Order,
     OrderItem,
     OrderStatus,
@@ -339,7 +339,7 @@ def test_order_status_informs_even_for_unverified_sender() -> None:
     [(0.15, Verdict.INFORM), (0.40, Verdict.INFORM), (0.149, Verdict.ESCALATE), (0.0, Verdict.ESCALATE)],
 )
 def test_product_question_needs_a_confident_kb_match(score: float, expected: Verdict) -> None:
-    articles = [KnowledgeArticle(id="KB-1", title="Shipping", content="...", score=score)] if score else []
+    articles = [RetrievedArticle(id="KB-1", title="Shipping", content="...", score=score)] if score else []
     facts = CaseFacts(kb_articles=articles, kb_searched=True)
     decision = evaluate(
         make_analysis(Intent.PRODUCT_QUESTION, order_id=None), facts, sender_email=None, today=TODAY, config=CONFIG

@@ -200,12 +200,12 @@ def check_address_changeable(order: Order, config: PolicyConfig) -> RuleCheck:
 
 def check_kb_answer(facts: CaseFacts, config: PolicyConfig) -> RuleCheck:
     rule = "kb.answer_found"
-    best = max((a.score for a in facts.kb_articles), default=0.0)
-    if best >= config.kb_min_score:
+    best = max(facts.kb_articles, key=lambda a: a.score, default=None)
+    if best is not None and best.score >= config.kb_min_score:
         return RuleCheck(
             rule_id=rule,
             outcome=RuleOutcome.PASS,
-            detail=f"Knowledge-base match '{facts.kb_articles[0].title}' (score {best:.2f}).",
+            detail=f"Knowledge-base match '{best.title}' [{best.id}] (score {best.score:.2f}).",
         )
     return RuleCheck(
         rule_id=rule,

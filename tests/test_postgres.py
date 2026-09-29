@@ -1,4 +1,4 @@
-"""Optional: the pause/resume flow against Postgres (tickets table + AsyncPostgresSaver).
+"""Optional: the pause/resume flow and pgvector retrieval against Postgres.
 
 Runs only when TEST_POSTGRES_URL is set, e.g.
     TEST_POSTGRES_URL=postgresql+psycopg://support:support@localhost:5432/support uv run pytest tests/test_postgres.py
@@ -36,3 +36,19 @@ async def test_pause_and_resume_on_postgres() -> None:
         done = await second.service.approve(paused.id, operator="maria")
         assert done.resolution == "refund_issued"
         assert second.store.refunds[0].amount == Decimal("249.00")
+
+
+async def test_faq_answered_from_pgvector_knowledge_base() -> None:
+    settings = Settings(
+        _env_file=None,  # type: ignore[call-arg]
+        llm_provider="fake",
+        database_url=POSTGRES_URL or "",
+        kb_backend="pgvector",
+        examples_dir=ROOT / "examples",
+        log_level="WARNING",
+    )
+    async with create_runtime(settings) as runtime:
+        assert runtime.knowledge_base.backend == "pgvector"
+        view = await runtime.service.submit(example("06").ticket)
+    assert view.resolution == "informed"
+    assert "See: International shipping [KB-001]" in (view.reply or "")

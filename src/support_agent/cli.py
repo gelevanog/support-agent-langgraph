@@ -20,6 +20,7 @@ from rich.text import Text
 from support_agent.config import get_settings
 from support_agent.examples import find_example, load_examples
 from support_agent.graph import AgentDeps, build_graph
+from support_agent.knowledge import InMemoryKnowledgeBase, hashing_model
 from support_agent.llm import FakeSupportModel
 from support_agent.logging_config import configure_logging
 from support_agent.models import AuditEvent, AuditKind, Channel, TicketIn, TicketStatus
@@ -90,7 +91,8 @@ def print_outcome(view: TicketView) -> None:
     console.print()
     console.print(summary)
     if view.reply:
-        console.print(Panel(view.reply, title="Draft reply", expand=False, border_style="green"))
+        # Text, not markup: replies contain citations like "[KB-001]".
+        console.print(Panel(Text(view.reply), title="Draft reply", expand=False, border_style="green"))
     if view.status is TicketStatus.AWAITING_APPROVAL:
         reasons = "\n".join(f"- {r}" for r in (view.pending_approval or {}).get("reasons", []))
         console.print(
@@ -103,7 +105,7 @@ def print_outcome(view: TicketView) -> None:
             )
         )
     if view.error:
-        console.print(Panel(view.error, title="Error", border_style="red"))
+        console.print(Panel(Text(view.error), title="Error", border_style="red"))
 
 
 def _run(fn: Callable[[Runtime], Awaitable[T]], verbose: bool = False) -> T:
@@ -263,7 +265,8 @@ def graph() -> None:
 
     async def draw() -> str:
         async with StoreClient.in_process() as client:
-            compiled = build_graph(AgentDeps(llm=FakeSupportModel(), tools=build_store_tools(client)))
+            tools = build_store_tools(client, InMemoryKnowledgeBase(hashing_model()))
+            compiled = build_graph(AgentDeps(llm=FakeSupportModel(), tools=tools))
             return compiled.get_graph().draw_mermaid()
 
     print(asyncio.run(draw()))

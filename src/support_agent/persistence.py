@@ -43,6 +43,7 @@ from support_agent.models import (
     PolicyDecision,
     ProposedAction,
     Resolution,
+    RetrievedArticle,
     RuleCheck,
     RuleOutcome,
     Sentiment,
@@ -56,7 +57,6 @@ from support_agent.store_api.schemas import (
     Customer,
     CustomerTier,
     EscalationPriority,
-    KnowledgeArticle,
     Order,
     OrderItem,
     OrderStatus,
@@ -65,7 +65,7 @@ from support_agent.store_api.schemas import (
 # Explicit allowlist of types the checkpointer may deserialise (no arbitrary class loading).
 CHECKPOINT_TYPES: tuple[type, ...] = (
     Ticket, Channel, TicketAnalysis, Intent, Urgency, Sentiment, CaseFacts, Order, OrderItem,
-    OrderStatus, Customer, CustomerTier, KnowledgeArticle, PolicyDecision, ProposedAction, Verdict,
+    OrderStatus, Customer, CustomerTier, RetrievedArticle, PolicyDecision, ProposedAction, Verdict,
     RuleCheck, RuleOutcome, EscalationPriority, ApprovalResponse, Resolution, TicketStatus,
     AuditEvent, AuditKind, HumanMessage, AIMessage, SystemMessage, ToolMessage,
 )  # fmt: skip

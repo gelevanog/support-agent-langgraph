@@ -45,7 +45,9 @@ from support_agent.models import (
     Intent,
     PolicyDecision,
     ProposedAction,
+    ReplyDraft,
     Resolution,
+    RetrievedArticle,
     RuleOutcome,
     Ticket,
     TicketAnalysis,
@@ -53,7 +55,7 @@ from support_agent.models import (
     Verdict,
 )
 from support_agent.rules.policy import PolicyConfig, evaluate
-from support_agent.store_api.schemas import Customer, KnowledgeArticle, Order
+from support_agent.store_api.schemas import Customer, Order
 from support_agent.tools.definitions import StoreTools
 
 log = get_logger(__name__)
@@ -114,6 +116,14 @@ def _fmt_call(call: ToolCall, *, hide: tuple[str, ...] = ()) -> str:
     return f"{call['name']}({args})"
 
 
+def _fmt_result(tool_name: str, artifact: dict[str, Any]) -> str:
+    """One-line outcome of a read-only lookup for the audit trail."""
+    if tool_name == "search_knowledge_base" and "articles" in artifact:
+        hits = ", ".join(f"{a['id']} ({a['score']:.2f})" for a in artifact["articles"])
+        return hits or "no matching articles"
+    return "ok"
+
+
 def absorb_tool_result(facts: CaseFacts, tool_name: str, artifact: dict[str, Any]) -> CaseFacts:
     """Turn a read-only tool result into typed facts for the rules engine."""
     match tool_name:
@@ -126,7 +136,7 @@ def absorb_tool_result(facts: CaseFacts, tool_name: str, artifact: dict[str, Any
         case "get_customer" if "customer" in artifact:
             return facts.model_copy(update={"customer": Customer.model_validate(artifact["customer"])})
         case "search_knowledge_base" if "articles" in artifact:
-            articles = [KnowledgeArticle.model_validate(a) for a in artifact["articles"]]
+            articles = [RetrievedArticle.model_validate(a) for a in artifact["articles"]]
             return facts.model_copy(update={"kb_articles": articles, "kb_searched": True})
         case _:
             return facts
@@ -208,11 +218,30 @@ def build_reply_context(
         if resolution is Resolution.DENIED
         else [],
         "kb_articles": [
-            {"title": a.title, "content": a.content} for a in facts.kb_articles[:2] if a.score >= kb_min_score
+            {"id": a.id, "title": a.title, "content": a.content}
+            for a in facts.kb_articles[:2]
+            if a.score >= kb_min_score
         ],
         "missing_info": missing_info,
         "requested_order_id": analysis.order_id,
     }
+
+
+def compose_reply(draft: ReplyDraft, context: dict[str, Any]) -> tuple[str, list[str], list[str]]:
+    """Final reply text: the model's message, a "See:" line per valid citation, then the signature.
+
+    Citations are checked against the whitelisted context, so the reply can only reference articles
+    the rules let through. Returns (reply, cited ids, dropped ids).
+    """
+    available = {article["id"]: article for article in context["kb_articles"]}
+    requested = list(dict.fromkeys(draft.cited_article_ids))
+    cited = [article_id for article_id in requested if article_id in available]
+    dropped = [article_id for article_id in requested if article_id not in available]
+    parts = [draft.message.strip()]
+    if cited:
+        parts.append("\n".join(f"See: {available[i]['title']} [{i}]" for i in cited))
+    parts.append(f"Best regards,\n{context['store_name']} Support")
+    return "\n\n".join(parts), cited, dropped
 
 
 class SupportAgentNodes:
@@ -299,14 +328,16 @@ class SupportAgentNodes:
         facts = state.get("facts") or CaseFacts()
         events = []
         for msg in tool_messages:
+            name = msg.name or ""
             artifact = msg.artifact if isinstance(msg.artifact, dict) else {}
-            facts = absorb_tool_result(facts, msg.name or "", artifact)
+            facts = absorb_tool_result(facts, name, artifact)
             failed = "error" in artifact or msg.status == "error"
             events.append(
                 AuditEvent(
                     node="lookup_tools",
                     kind=AuditKind.ERROR if failed else AuditKind.TOOL,
-                    message=f"{msg.name} -> {'error: ' + str(artifact.get('error', msg.content)) if failed else 'ok'}",
+                    message=f"{msg.name} -> "
+                    + (f"error: {artifact.get('error', msg.content)}" if failed else _fmt_result(name, artifact)),
                     data={"tool": msg.name, "result": artifact or str(msg.content)},
                 )
             )
@@ -321,7 +352,9 @@ class SupportAgentNodes:
         event = AuditEvent(
             node="apply_policy",
             kind=AuditKind.TOOL,
-            message=f"Policy guard fetched {_fmt_call(call)} (not provided by research)",
+            message=(
+                f"Policy guard fetched {_fmt_call(call)} (not provided by research) -> {_fmt_result(name, artifact)}"
+            ),
             data={"tool": name, "result": artifact},
         )
         return absorb_tool_result(facts, name, artifact), event
@@ -509,15 +542,28 @@ class SupportAgentNodes:
     async def draft_reply(self, state: AgentState) -> dict[str, Any]:
         resolution = determine_resolution(state)
         context = build_reply_context(state, resolution, self.deps.store_name, self.deps.policy.kb_min_score)
-        response = await self.deps.llm.ainvoke(
+        writer = with_structured_output(self.deps.llm, ReplyDraft)
+        draft = await writer.ainvoke(
             [self._system(DRAFT_SYSTEM), HumanMessage(content=draft_request(state["ticket"], context))]
         )
-        reply = response.text.strip()
+        reply, cited, dropped = compose_reply(draft, context)
         status = TicketStatus.ESCALATED if resolution is Resolution.ESCALATED else TicketStatus.RESOLVED
-        event = AuditEvent(
-            node="draft_reply",
-            kind=AuditKind.REPLY,
-            message=f"Reply drafted ({resolution.value}, {len(reply.split())} words)",
-            data={"resolution": resolution.value, "context": context},
-        )
-        return {"reply": reply, "resolution": resolution, "status": status, "audit": [event]}
+        citations = f", cites {', '.join(cited)}" if cited else ""
+        events = [
+            AuditEvent(
+                node="draft_reply",
+                kind=AuditKind.REPLY,
+                message=f"Reply drafted ({resolution.value}, {len(reply.split())} words{citations})",
+                data={"resolution": resolution.value, "context": context, "cited_article_ids": cited},
+            )
+        ]
+        if dropped:
+            events.append(
+                AuditEvent(
+                    node="draft_reply",
+                    kind=AuditKind.RULE,
+                    message=f"Dropped citations of articles not in the reply context: {', '.join(dropped)}",
+                    data={"dropped_article_ids": dropped},
+                )
+            )
+        return {"reply": reply, "resolution": resolution, "status": status, "audit": events}

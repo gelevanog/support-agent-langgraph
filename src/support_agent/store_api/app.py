@@ -1,16 +1,14 @@
 """Mock Store API (FastAPI).
 
 Stands in for the systems a support agent needs in production: the commerce platform
-(orders, refunds, addresses), the CRM (customers), the help center (knowledge base) and
+(orders, refunds, addresses), the CRM (customers), the help center (knowledge-base articles) and
 the helpdesk (escalations). The agent talks to it over HTTP through `StoreClient`, so
 swapping in Shopify/Zendesk/HubSpot means replacing the client, not the agent.
 """
 
 from __future__ import annotations
 
-from typing import Annotated
-
-from fastapi import FastAPI, HTTPException, Query, Request, status
+from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.responses import JSONResponse
 
 from support_agent.store_api.repository import (
@@ -68,12 +66,10 @@ def create_store_app(repository: StoreRepository | None = None) -> FastAPI:
     async def get_customer(email: str) -> Customer:
         return repo.get_customer(email)
 
-    @app.get("/kb/search", response_model=list[KnowledgeArticle], tags=["knowledge-base"])
-    async def search_kb(
-        q: Annotated[str, Query(min_length=2, max_length=500)],
-        limit: Annotated[int, Query(ge=1, le=10)] = 3,
-    ) -> list[KnowledgeArticle]:
-        return repo.search_knowledge_base(q, limit=limit)
+    @app.get("/kb/articles", response_model=list[KnowledgeArticle], tags=["knowledge-base"])
+    async def list_kb_articles() -> list[KnowledgeArticle]:
+        """Export of all help-center articles; the agent builds its own search index from it."""
+        return repo.list_knowledge_articles()
 
     @app.post(
         "/escalations",

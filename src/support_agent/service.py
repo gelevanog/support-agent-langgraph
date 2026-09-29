@@ -6,7 +6,7 @@ import asyncio
 import inspect
 import uuid
 from collections import defaultdict
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Sequence
 from datetime import datetime
 from typing import Any
 
@@ -24,6 +24,7 @@ from support_agent.models import (
     Ticket,
     TicketIn,
     TicketStatus,
+    snippet,
     utcnow,
 )
 from support_agent.persistence import TicketRepository
@@ -50,6 +51,22 @@ class AuditEventView(BaseModel):
     data: dict[str, Any]
 
 
+class RetrievedArticleView(BaseModel):
+    id: str
+    title: str
+    score: float
+    snippet: str
+    in_reply_context: bool
+    cited: bool
+
+
+class KnowledgeRetrieval(BaseModel):
+    """What the knowledge-base search returned and which articles the reply used."""
+
+    query: str
+    articles: list[RetrievedArticleView]
+
+
 class TicketView(BaseModel):
     id: str
     status: TicketStatus
@@ -67,7 +84,39 @@ class TicketView(BaseModel):
     pending_approval: dict[str, Any] | None
     reply: str | None
     error: str | None
+    knowledge: KnowledgeRetrieval | None = None
     audit: list[AuditEventView]
+
+
+def knowledge_from_audit(audit: Sequence[dict[str, Any]]) -> KnowledgeRetrieval | None:
+    """Rebuild the retrieval summary from the audit trail (the last search and the drafted reply)."""
+    search = next(
+        (
+            e["data"]["result"]
+            for e in reversed(audit)
+            if e["data"].get("tool") == "search_knowledge_base" and "articles" in e["data"].get("result", {})
+        ),
+        None,
+    )
+    if search is None:
+        return None
+    reply: dict[str, Any] = next((e["data"] for e in reversed(audit) if e["kind"] == AuditKind.REPLY), {})
+    in_context = {a["id"] for a in reply.get("context", {}).get("kb_articles", [])}
+    cited = set(reply.get("cited_article_ids", []))
+    return KnowledgeRetrieval(
+        query=search["query"],
+        articles=[
+            RetrievedArticleView(
+                id=a["id"],
+                title=a["title"],
+                score=a["score"],
+                snippet=snippet(a["content"]),
+                in_reply_context=a["id"] in in_context,
+                cited=a["id"] in cited,
+            )
+            for a in search["articles"]
+        ],
+    )
 
 
 def new_ticket_id() -> str:
@@ -106,7 +155,7 @@ class TicketService:
         row = await self.repository.get(ticket_id)
         if row is None:
             raise TicketNotFoundError(ticket_id)
-        return TicketView.model_validate(row)
+        return TicketView.model_validate({**row, "knowledge": knowledge_from_audit(row["audit"])})
 
     async def list(self, status: TicketStatus | None = None, limit: int = 50) -> list[dict[str, Any]]:
         return await self.repository.list(status=status, limit=limit)

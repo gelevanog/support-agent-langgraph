@@ -41,6 +41,23 @@ def test_submit_and_get_ticket(client: TestClient) -> None:
     assert {e["kind"] for e in fetched["audit"]} >= {"llm", "tool", "rule", "decision", "action", "reply"}
 
 
+def test_ticket_exposes_retrieved_articles(client: TestClient) -> None:
+    created = submit(client, "06")
+    knowledge = client.get(f"/tickets/{created['id']}").json()["knowledge"]
+    assert knowledge["articles"][0] == {
+        "id": "KB-001",
+        "title": "International shipping",
+        "score": knowledge["articles"][0]["score"],
+        "snippet": knowledge["articles"][0]["snippet"],
+        "in_reply_context": True,
+        "cited": True,
+    }
+    page = client.get(f"/ui/tickets/{created['id']}").text
+    assert "Knowledge base" in page
+    assert "KB-001" in page
+    assert "cited" in page
+
+
 def test_submit_validates_input(client: TestClient) -> None:
     assert client.post("/tickets", json={"body": ""}).status_code == 422
     assert client.post("/tickets", json={"body": "hello there", "customer_email": "not-an-email"}).status_code == 422

@@ -2,16 +2,22 @@
 
 from __future__ import annotations
 
+import json
 from datetime import date, timedelta
 from decimal import Decimal
 
 import pytest
 from fastapi.testclient import TestClient
 
+from support_agent.knowledge import InMemoryKnowledgeBase, KnowledgeBase, hashing_model
 from support_agent.store_api import StoreRepository, create_store_app
-from support_agent.tools import StoreClient, StoreConflictError, StoreNotFoundError, build_store_tools
+from support_agent.tools import StoreClient, StoreConflictError, StoreNotFoundError, StoreTools, build_store_tools
 
 TODAY = date(2026, 9, 28)
+
+
+def store_tools(client: StoreClient, knowledge_base: KnowledgeBase | None = None) -> StoreTools:
+    return build_store_tools(client, knowledge_base or InMemoryKnowledgeBase(hashing_model()))
 
 
 @pytest.fixture
@@ -52,23 +58,16 @@ def test_get_customer_is_case_insensitive(http: TestClient) -> None:
     assert response.json()["tier"] == "vip"
 
 
-@pytest.mark.parametrize(
-    ("query", "expected_top"),
-    [
-        ("Do you ship to Canada? How long does international shipping take?", "KB-001"),
-        ("how long until my refund shows up on my card", "KB-004"),
-        ("warranty on my espresso machine", "KB-005"),
-        ("how do I clean the burr grinder", "KB-008"),
-    ],
-)
-def test_knowledge_base_search_ranks_relevant_article_first(http: TestClient, query: str, expected_top: str) -> None:
-    response = http.get("/kb/search", params={"q": query})
+def test_knowledge_base_article_export(http: TestClient) -> None:
+    response = http.get("/kb/articles")
     assert response.status_code == 200
-    assert response.json()[0]["id"] == expected_top
-
-
-def test_knowledge_base_search_without_match_returns_empty(http: TestClient) -> None:
-    assert http.get("/kb/search", params={"q": "zebra"}).json() == []
+    articles = response.json()
+    assert len(articles) == 15
+    assert articles[0] == {
+        "id": "KB-001",
+        "title": "International shipping",
+        "content": articles[0]["content"],
+    }
 
 
 def test_create_refund_updates_order(http: TestClient, repo: StoreRepository) -> None:
@@ -114,13 +113,13 @@ async def test_client_maps_http_errors(repo: StoreRepository) -> None:
 
 async def test_read_only_tool_set() -> None:
     async with StoreClient.in_process() as client:
-        tools = build_store_tools(client)
+        tools = store_tools(client)
         assert [t.name for t in tools.read_only] == ["get_order", "get_customer", "search_knowledge_base"]
 
 
 async def test_tool_returns_content_and_artifact(repo: StoreRepository) -> None:
     async with StoreClient.in_process(create_store_app(repo)) as client:
-        tools = build_store_tools(client)
+        tools = store_tools(client)
         call = {"name": "get_order", "args": {"order_id": "1043"}, "id": "c1", "type": "tool_call"}
         message = await tools.get_order.ainvoke(call)
         assert message.name == "get_order"
@@ -130,15 +129,37 @@ async def test_tool_returns_content_and_artifact(repo: StoreRepository) -> None:
 
 async def test_tool_errors_are_returned_not_raised(repo: StoreRepository) -> None:
     async with StoreClient.in_process(create_store_app(repo)) as client:
-        tools = build_store_tools(client)
+        tools = store_tools(client)
         call = {"name": "get_order", "args": {"order_id": "9999"}, "id": "c1", "type": "tool_call"}
         message = await tools.get_order.ainvoke(call)
         assert message.artifact == {"error": "Order 9999 not found", "status_code": 404}
 
 
+async def test_knowledge_base_tool_returns_snippets_for_the_model_and_articles_as_artifact(
+    repo: StoreRepository,
+) -> None:
+    async with StoreClient.in_process(create_store_app(repo)) as client:
+        knowledge_base = InMemoryKnowledgeBase(hashing_model())
+        await knowledge_base.index(await client.list_knowledge_articles())
+        tools = store_tools(client, knowledge_base)
+        call = {
+            "name": "search_knowledge_base",
+            "args": {"query": "Do you ship to Canada?"},
+            "id": "c1",
+            "type": "tool_call",
+        }
+        message = await tools.search_knowledge_base.ainvoke(call)
+        top = json.loads(message.content)["articles"][0]
+        assert set(top) == {"id", "title", "snippet", "score"}
+        assert top["id"] == "KB-001"
+        assert len(top["snippet"]) <= 163
+        assert message.artifact["query"] == "Do you ship to Canada?"
+        assert message.artifact["articles"][0]["content"].startswith("We ship to Canada")
+
+
 async def test_write_tools_hit_the_store(repo: StoreRepository) -> None:
     async with StoreClient.in_process(create_store_app(repo)) as client:
-        tools = build_store_tools(client)
+        tools = store_tools(client)
         refund = await tools.create_refund.ainvoke(
             {
                 "name": "create_refund",

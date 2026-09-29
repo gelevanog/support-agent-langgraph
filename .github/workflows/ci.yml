@@ -40,7 +40,8 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:17-alpine
+        # Postgres 17 with the pgvector extension (checkpointer, tickets and the vector KB tests).
+        image: pgvector/pgvector:pg17
         env:
           POSTGRES_USER: support
           POSTGRES_PASSWORD: support

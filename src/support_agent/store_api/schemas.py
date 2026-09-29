@@ -62,10 +62,11 @@ class Customer(BaseModel):
 
 
 class KnowledgeArticle(BaseModel):
+    """A help-center article (the source of truth the agent's search index is built from)."""
+
     id: str
     title: str
     content: str
-    score: float = 0.0
 
 
 class RefundRequest(BaseModel):

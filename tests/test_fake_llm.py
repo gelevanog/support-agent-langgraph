@@ -8,10 +8,11 @@ import pytest
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 
 from support_agent.entities import extract_email, extract_new_address, extract_order_id, normalize_order_id
+from support_agent.knowledge import InMemoryKnowledgeBase, hashing_model
 from support_agent.llm import FakeSupportModel, with_structured_output
 from support_agent.llm.fake import analyze_ticket, plan_lookups, render_reply
-from support_agent.llm.prompts import research_request, ticket_block
-from support_agent.models import Intent, Sentiment, Ticket, TicketAnalysis, Urgency
+from support_agent.llm.prompts import draft_request, research_request, ticket_block
+from support_agent.models import Intent, ReplyDraft, Sentiment, Ticket, TicketAnalysis, Urgency
 from support_agent.tools import StoreClient, build_store_tools
 from tests.conftest import EXAMPLES
 
@@ -98,7 +99,7 @@ async def test_bind_tools_emits_multi_step_plan() -> None:
     ticket = Ticket(id="T-1", body="Refund for order #1042 please", customer_email="anna.miller@example.com")
     analysis = analyze_ticket(ticket.body)
     async with StoreClient.in_process() as client:
-        tools = build_store_tools(client)
+        tools = build_store_tools(client, InMemoryKnowledgeBase(hashing_model()))
         model = FakeSupportModel().bind_tools(tools.read_only)
         messages = [SystemMessage(content="research"), HumanMessage(content=research_request(ticket, analysis))]
         first = await model.ainvoke(messages)
@@ -123,7 +124,7 @@ def test_plan_stops_when_facts_are_gathered() -> None:
 
 
 def test_render_reply_uses_context_only() -> None:
-    reply = render_reply(
+    draft = render_reply(
         {
             "store_name": "Brewline Coffee",
             "resolution": "refund_issued",
@@ -132,14 +133,44 @@ def test_render_reply_uses_context_only() -> None:
             "order": {"id": "1042"},
             "refund": {"id": "RF-1", "amount": "64.90"},
             "requested_order_id": "1042",
+            "kb_articles": [],
         }
     )
-    assert reply.startswith("Hi Anna,")
-    assert "$64.90" in reply
-    assert "RF-1" in reply
-    assert reply.endswith("Brewline Coffee Support")
+    assert draft.message.startswith("Hi Anna,")
+    assert "$64.90" in draft.message
+    assert "RF-1" in draft.message
+    assert draft.cited_article_ids == []
+
+
+def test_render_reply_cites_the_articles_it_uses() -> None:
+    articles = [
+        {"id": "KB-001", "title": "International shipping", "content": "We ship to Canada."},
+        {"id": "KB-002", "title": "Domestic shipping times", "content": "Standard shipping takes 3-5 days."},
+    ]
+    draft = render_reply(
+        {
+            "store_name": "Brewline Coffee",
+            "resolution": "informed",
+            "intent": "product_question",
+            "kb_articles": articles,
+        }
+    )
+    assert "We ship to Canada." in draft.message
+    assert draft.cited_article_ids == ["KB-001"]
+
+
+def test_structured_reply_through_standard_interface() -> None:
+    ticket = Ticket(id="T-1", body="Do you ship to Canada?")
+    context = {"store_name": "Brewline Coffee", "resolution": "escalated", "intent": "other", "kb_articles": []}
+    writer = with_structured_output(FakeSupportModel(), ReplyDraft)
+    draft = writer.invoke([SystemMessage(content="draft"), HumanMessage(content=draft_request(ticket, context))])
+    assert isinstance(draft, ReplyDraft)
+    assert "senior member of our support team" in draft.message
 
 
 def test_drafting_without_context_fails_loudly() -> None:
+    writer = with_structured_output(FakeSupportModel(), ReplyDraft)
     with pytest.raises(ValueError, match="context"):
+        writer.invoke("write something")
+    with pytest.raises(ValueError, match="structured replies"):
         FakeSupportModel().invoke("write something")
