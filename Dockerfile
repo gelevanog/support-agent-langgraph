@@ -10,12 +10,12 @@ WORKDIR /app
 
 COPY pyproject.toml uv.lock ./
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-dev --extra postgres --no-install-project
+    uv sync --frozen --no-dev --extra postgres --extra tracing --no-install-project
 
 COPY README.md ./
 COPY src ./src
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-dev --extra postgres --no-editable
+    uv sync --frozen --no-dev --extra postgres --extra tracing --no-editable
 
 # ---- runtime: slim image, non-root user ----
 FROM python:3.12-slim

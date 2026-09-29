@@ -4,7 +4,7 @@
 help:  ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
 
-install:  ## Install dependencies (incl. dev tools and the postgres extra)
+install:  ## Install dependencies (incl. dev tools and the postgres and tracing extras)
 	uv sync --all-extras
 
 dev:  ## Run API + operator UI with auto-reload on http://localhost:8000

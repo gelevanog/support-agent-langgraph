@@ -66,6 +66,11 @@ class Settings(BaseSettings):
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
     log_format: Literal["console", "json"] = "console"
 
+    # --- Tracing (OpenTelemetry) -------------------------------------------------------------
+    # none = off (zero overhead); console = print spans; otlp = export to OTEL_EXPORTER_OTLP_ENDPOINT.
+    otel_traces_exporter: Literal["none", "console", "otlp"] = "none"
+    otel_service_name: str = "support-autopilot"
+
     def policy_config(self) -> PolicyConfig:
         return PolicyConfig(
             refund_window_days=self.policy_refund_window_days,

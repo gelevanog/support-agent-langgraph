@@ -27,6 +27,7 @@ from support_agent.models import AuditEvent, AuditKind, Channel, TicketIn, Ticke
 from support_agent.runtime import Runtime, create_runtime
 from support_agent.service import InvalidTicketStateError, TicketNotFoundError, TicketView
 from support_agent.tools import StoreClient, build_store_tools
+from support_agent.tracing import configure_tracing
 
 app = typer.Typer(help="Support Autopilot: resolve support tickets with an AI agent.", no_args_is_help=True)
 console = Console(highlight=False)
@@ -111,6 +112,7 @@ def print_outcome(view: TicketView) -> None:
 def _run(fn: Callable[[Runtime], Awaitable[T]], verbose: bool = False) -> T:
     settings = get_settings()
     configure_logging("INFO" if verbose else "WARNING", settings.log_format)
+    configure_tracing(settings)
 
     async def main() -> T:
         async with create_runtime(settings) as runtime:

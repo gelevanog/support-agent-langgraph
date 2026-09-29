@@ -12,8 +12,10 @@ from typing import Any
 
 from langchain_core.runnables import RunnableConfig
 from langgraph.types import Command
+from opentelemetry.trace import Span
 from pydantic import BaseModel
 
+from support_agent import tracing
 from support_agent.graph.builder import SupportGraph
 from support_agent.logging_config import get_logger
 from support_agent.models import (
@@ -132,7 +134,7 @@ class TicketService:
     @staticmethod
     def _config(ticket_id: str) -> RunnableConfig:
         # One LangGraph thread per ticket: the checkpointer keys all state by this id.
-        return {"configurable": {"thread_id": ticket_id}}
+        return {"configurable": {"thread_id": ticket_id}, "callbacks": tracing.langchain_callbacks()}
 
     async def submit(self, ticket_in: TicketIn, on_event: EventCallback | None = None) -> TicketView:
         ticket = Ticket(id=new_ticket_id(), **ticket_in.model_dump())
@@ -172,6 +174,17 @@ class TicketService:
             return await self._run(ticket_id, Command(resume=response.model_dump()), on_event)
 
     async def _run(self, ticket_id: str, graph_input: Any, on_event: EventCallback | None) -> TicketView:
+        operation = "resume" if isinstance(graph_input, Command) else "submit"
+        with tracing.span(f"ticket {operation}", {"support_agent.ticket_id": ticket_id}) as span:
+            view = await self._execute(ticket_id, graph_input, on_event, span)
+            if span is not None:
+                span.set_attribute("support_agent.ticket.status", view.status.value)
+                span.set_attribute("support_agent.ticket.resolution", view.resolution or "")
+            return view
+
+    async def _execute(
+        self, ticket_id: str, graph_input: Any, on_event: EventCallback | None, span: Span | None
+    ) -> TicketView:
         config = self._config(ticket_id)
         error: str | None = None
         try:
@@ -185,6 +198,7 @@ class TicketService:
                             await result
         except Exception as exc:
             log.exception("ticket.failed", ticket_id=ticket_id)
+            tracing.record_error(span, exc)
             error = f"{type(exc).__name__}: {exc}"
 
         snapshot = await self.graph.aget_state(config)

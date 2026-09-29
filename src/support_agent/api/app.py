@@ -16,12 +16,14 @@ from support_agent.logging_config import configure_logging
 from support_agent.runtime import create_runtime
 from support_agent.service import InvalidTicketStateError, TicketNotFoundError
 from support_agent.store_api import StoreRepository, create_store_app
+from support_agent.tracing import configure_tracing
 from support_agent.ui.routes import mount_ui
 
 
 def create_app(settings: Settings | None = None, *, llm: BaseChatModel | None = None) -> FastAPI:
     settings = settings or get_settings()
     configure_logging(settings.log_level, settings.log_format)
+    configure_tracing(settings)
     store = StoreRepository()
 
     @asynccontextmanager

@@ -4,7 +4,8 @@ Division of labour:
 * LLM nodes (`classify`, `research`, `draft_reply`) understand language and choose lookups.
 * Code nodes (`apply_policy`, `execute_action`, `escalate`) decide and act, deterministically.
 * `human_approval` pauses the graph with `interrupt()` until an operator responds.
-Every node returns audit events, which the state reducer appends to the ticket's trail.
+Every node returns audit events, which the state reducer appends to the ticket's trail, and runs
+inside an OpenTelemetry span when tracing is enabled.
 """
 
 from __future__ import annotations
@@ -25,6 +26,7 @@ from langgraph.errors import GraphInterrupt
 from langgraph.prebuilt import ToolNode
 from langgraph.types import interrupt
 
+from support_agent import tracing
 from support_agent.entities import extract_order_id, normalize_order_id
 from support_agent.graph.state import AgentState
 from support_agent.llm.factory import with_structured_output
@@ -78,21 +80,26 @@ class AgentDeps:
 
 
 def traced(node: str) -> Callable[[NodeFn], NodeFn]:
-    """Log start/finish/duration of a node with the ticket id bound to the log record."""
+    """Log start/finish/duration of a node (ticket id bound) and wrap it in a tracing span."""
 
     def decorator(fn: NodeFn) -> NodeFn:
         @wraps(fn)
         async def wrapper(self: SupportAgentNodes, state: AgentState, **kwargs: Any) -> dict[str, Any]:
             ticket_id = state["ticket"].id
             started = time.perf_counter()
-            try:
-                result = await fn(self, state, **kwargs)
-            except GraphInterrupt:
-                log.info("node.interrupted", node=node, ticket_id=ticket_id)
-                raise
-            except Exception:
-                log.exception("node.failed", node=node, ticket_id=ticket_id)
-                raise
+            attributes = {"support_agent.node": node, "support_agent.ticket_id": ticket_id}
+            with tracing.span(f"node {node}", attributes) as span:
+                try:
+                    result = await fn(self, state, **kwargs)
+                except GraphInterrupt:
+                    log.info("node.interrupted", node=node, ticket_id=ticket_id)
+                    if span is not None:
+                        span.add_event("interrupt", {"reason": "awaiting human approval"})
+                    raise
+                except Exception as exc:
+                    log.exception("node.failed", node=node, ticket_id=ticket_id)
+                    tracing.record_error(span, exc)
+                    raise
             log.info(
                 "node.completed",
                 node=node,

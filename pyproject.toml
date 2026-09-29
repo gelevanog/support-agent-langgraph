@@ -16,6 +16,7 @@ dependencies = [
     "langchain-openai",
     "langgraph",
     "langgraph-checkpoint-sqlite",
+    "opentelemetry-api",
     "pydantic",
     "pydantic-settings",
     "python-multipart",
@@ -28,6 +29,7 @@ dependencies = [
 
 [project.optional-dependencies]
 postgres = ["langgraph-checkpoint-postgres", "pgvector", "psycopg[binary,pool]"]
+tracing = ["opentelemetry-exporter-otlp-proto-http", "opentelemetry-sdk"]
 
 [dependency-groups]
 dev = ["mypy", "pytest", "pytest-asyncio", "ruff"]
