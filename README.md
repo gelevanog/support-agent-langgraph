@@ -221,6 +221,10 @@ Resolution  refund_issued
 
 ![Ticket detail and audit trail](docs/screenshots/ticket-audit-trail.png)
 
+**Knowledge-base answers**: for a product question the agent searches the help center by vector similarity. The panel shows the query, the top articles with their scores, and which ones were cited in the reply, used only as context, or not used. The reply links the article it relied on (`[KB-001]`).
+
+![Ticket answered from the knowledge base, with retrieved articles and citations](docs/screenshots/ticket-knowledge-base.png)
+
 ## Quick start
 
 ### Docker (no API keys needed)
