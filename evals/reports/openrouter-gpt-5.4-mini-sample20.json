@@ -1,0 +1,836 @@
+{
+  "generated_at": "2026-09-29T11:22:00.421797Z",
+  "dataset": "evals/tickets.jsonl",
+  "agent_provider": "openrouter/openai/gpt-5.4-mini",
+  "judge": "openrouter/anthropic/claude-sonnet-5",
+  "embeddings": "openrouter/openai/text-embedding-3-small/1536d",
+  "kb_backend": "memory",
+  "usage": {
+    "agent": {
+      "model": "openrouter/openai/gpt-5.4-mini",
+      "calls": 80,
+      "input_tokens": 48583,
+      "output_tokens": 4148,
+      "cost_usd": 0.055105
+    },
+    "judge": {
+      "model": "openrouter/anthropic/claude-sonnet-5",
+      "calls": 20,
+      "input_tokens": 40235,
+      "output_tokens": 5176,
+      "cost_usd": 0.13223
+    }
+  },
+  "metrics": {
+    "intent_accuracy": {
+      "correct": 18,
+      "total": 20,
+      "value": 0.9
+    },
+    "intent_recall": {
+      "order_status": {
+        "correct": 4,
+        "total": 4,
+        "value": 1.0
+      },
+      "refund_request": {
+        "correct": 4,
+        "total": 4,
+        "value": 1.0
+      },
+      "product_question": {
+        "correct": 3,
+        "total": 3,
+        "value": 1.0
+      },
+      "address_change": {
+        "correct": 4,
+        "total": 4,
+        "value": 1.0
+      },
+      "complaint": {
+        "correct": 2,
+        "total": 3,
+        "value": 0.6667
+      },
+      "other": {
+        "correct": 1,
+        "total": 2,
+        "value": 0.5
+      }
+    },
+    "confusion": {
+      "order_status": {
+        "order_status": 4
+      },
+      "refund_request": {
+        "refund_request": 4
+      },
+      "product_question": {
+        "product_question": 3
+      },
+      "address_change": {
+        "address_change": 4
+      },
+      "complaint": {
+        "order_status": 1,
+        "complaint": 2
+      },
+      "other": {
+        "other": 1,
+        "product_question": 1
+      }
+    },
+    "verdict_accuracy": {
+      "correct": 18,
+      "total": 20,
+      "value": 0.9
+    },
+    "resolution_accuracy": {
+      "correct": 18,
+      "total": 20,
+      "value": 0.9
+    },
+    "kb_hit_rate": {
+      "correct": 2,
+      "total": 2,
+      "value": 1.0
+    },
+    "kb_top1": {
+      "correct": 2,
+      "total": 2,
+      "value": 1.0
+    },
+    "kb_cited": {
+      "correct": 2,
+      "total": 2,
+      "value": 1.0
+    },
+    "reply_quality": {
+      "judged": 20,
+      "mean_scores": {
+        "groundedness": 4.95,
+        "tone": 4.65,
+        "policy_compliance": 4.85
+      },
+      "passing": {
+        "correct": 19,
+        "total": 20,
+        "value": 0.95
+      }
+    },
+    "all_checks_passed": {
+      "correct": 18,
+      "total": 20,
+      "value": 0.9
+    },
+    "errors": 0
+  },
+  "results": [
+    {
+      "id": "refund-chipped-auto",
+      "tests": "Delivered 5 days ago, $64.90, owner writes: refund executed automatically",
+      "expected": {
+        "intent": "refund_request",
+        "verdict": "auto_approve",
+        "resolution": "refund_issued",
+        "kb_article": null
+      },
+      "intent": "refund_request",
+      "verdict": "auto_approve",
+      "resolution": "refund_issued",
+      "status": "resolved",
+      "paused_for_review": false,
+      "retrieved_articles": [
+        "KB-003",
+        "KB-015",
+        "KB-005"
+      ],
+      "cited_articles": [
+        "KB-003"
+      ],
+      "reply": "Hi Anna, thanks for reaching out. I’ve processed a full refund of $64.90 for order #1042 because the glass carafe arrived chipped. No return is needed for damaged or defective items.\n\nSee: Returns and refund policy [KB-003]\n\nBest regards,\nBrewline Coffee Support",
+      "judgement": {
+        "groundedness": {
+          "explanation": "The refund amount ($64.90) and order ID match the context exactly, and the note that damaged items don't need to be returned is directly supported by KB-003. The only slight looseness is describing the item as a 'glass carafe' rather than the order's listed 'Ceramic Pour-Over Set,' but this mirrors the customer's own wording and isn't an invented fact.",
+          "score": 4
+        },
+        "tone": {
+          "explanation": "The reply is polite, empathetic, and directly answers the refund request without extra fluff or missing details.",
+          "score": 5
+        },
+        "policy_compliance": {
+          "explanation": "The reply states exactly the refund that was authorized, with the correct amount and no extra promises or invented timelines, and it cites the relevant KB article as required.",
+          "score": 5
+        }
+      },
+      "error": null
+    },
+    {
+      "id": "refund-over-limit",
+      "tests": "$249 is above the $100 auto-approve limit: pauses, operator approves",
+      "expected": {
+        "intent": "refund_request",
+        "verdict": "needs_approval",
+        "resolution": "refund_issued",
+        "kb_article": null
+      },
+      "intent": "refund_request",
+      "verdict": "needs_approval",
+      "resolution": "refund_issued",
+      "status": "resolved",
+      "paused_for_review": true,
+      "retrieved_articles": [
+        "KB-005",
+        "KB-008",
+        "KB-003"
+      ],
+      "cited_articles": [
+        "KB-005",
+        "KB-008"
+      ],
+      "reply": "Hi Ben, thanks for reaching out. I’ve confirmed a refund for $249.00 for order 1043, which included your ProGrind 64mm Espresso Grinder. The refund has been issued. If you’d like, I can also help with basic grinder care tips to help prevent future issues.\n\nSee: Warranty on machines and grinders [KB-005]\nSee: Cleaning your burr grinder [KB-008]\n\nBest regards,\nBrewline Coffee Support",
+      "judgement": {
+        "groundedness": {
+          "explanation": "All facts (refund amount $249.00, order 1043, ProGrind grinder) match the context exactly; no invented details.",
+          "score": 5
+        },
+        "tone": {
+          "explanation": "Polite and clear, but lacks any acknowledgment of the inconvenience of the grinder breaking after only a week, which would show more empathy given the complaint.",
+          "score": 4
+        },
+        "policy_compliance": {
+          "explanation": "The reply correctly states only the decided resolution (refund issued) without extra promises, but citing KB-005 (warranty) and KB-008 (cleaning) is unnecessary and slightly odd since the resolution was already a refund, not a warranty claim—this could confuse the customer about what applies, though it doesn't misstate policy.",
+          "score": 4
+        }
+      },
+      "error": null
+    },
+    {
+      "id": "refund-outside-window",
+      "tests": "Delivered 45 days ago: outside the 30-day window, denied",
+      "expected": {
+        "intent": "refund_request",
+        "verdict": "deny",
+        "resolution": "denied",
+        "kb_article": null
+      },
+      "intent": "refund_request",
+      "verdict": "deny",
+      "resolution": "denied",
+      "status": "resolved",
+      "paused_for_review": false,
+      "retrieved_articles": [
+        "KB-003",
+        "KB-005",
+        "KB-011"
+      ],
+      "cited_articles": [
+        "KB-003"
+      ],
+      "reply": "Hi David, thanks for reaching out. I’m sorry, but we can’t approve a refund for order #1044 because it was delivered 45 days ago, which is outside our 30-day refund window. If you’d like, you can review our return policy for the eligible return timeframe and refund details.\n\nSee: Returns and refund policy [KB-003]\n\nBest regards,\nBrewline Coffee Support",
+      "judgement": {
+        "groundedness": {
+          "explanation": "All facts (order #1044, 45 days delivered, 30-day window) match the context exactly; no invented details.",
+          "score": 5
+        },
+        "tone": {
+          "explanation": "Polite, clear, empathetic ('I'm sorry'), and directly answers the refund question without unnecessary padding.",
+          "score": 5
+        },
+        "policy_compliance": {
+          "explanation": "Correctly denies refund per the resolution, cites KB-003, and does not promise any exceptions, discounts, or timelines beyond what's decided.",
+          "score": 5
+        }
+      },
+      "error": null
+    },
+    {
+      "id": "refund-day-30-boundary",
+      "tests": "Delivered exactly 30 days ago: the window is inclusive, refund goes through",
+      "expected": {
+        "intent": "refund_request",
+        "verdict": "auto_approve",
+        "resolution": "refund_issued",
+        "kb_article": null
+      },
+      "intent": "refund_request",
+      "verdict": "auto_approve",
+      "resolution": "refund_issued",
+      "status": "resolved",
+      "paused_for_review": false,
+      "retrieved_articles": [
+        "KB-003",
+        "KB-005",
+        "KB-015"
+      ],
+      "cited_articles": [],
+      "reply": "Hi Anna, thanks for reaching out. I’ve issued a refund for order 1050 in the amount of $20.00 for the paper filters. If you need anything else, just let us know.\n\nBest regards,\nBrewline Coffee Support",
+      "judgement": {
+        "groundedness": {
+          "explanation": "All facts stated (order 1050, refund amount $20.00) match the context exactly with no invented details.",
+          "score": 5
+        },
+        "tone": {
+          "explanation": "Polite, clear, and directly addresses the customer's request without unnecessary elaboration; could show a touch more empathy for the inconvenience but is still acceptable.",
+          "score": 4
+        },
+        "policy_compliance": {
+          "explanation": "Reply accurately reflects the decided resolution (refund_issued) with correct amount and no unauthorized promises or internal details; no kb_articles were provided to cite, so omission is appropriate.",
+          "score": 5
+        }
+      },
+      "error": null
+    },
+    {
+      "id": "status-shipped",
+      "tests": "Shipped order: share carrier and tracking number",
+      "expected": {
+        "intent": "order_status",
+        "verdict": "inform",
+        "resolution": "informed",
+        "kb_article": null
+      },
+      "intent": "order_status",
+      "verdict": "inform",
+      "resolution": "informed",
+      "status": "resolved",
+      "paused_for_review": false,
+      "retrieved_articles": [],
+      "cited_articles": [],
+      "reply": "Hi Emma, your order #1045 has shipped. It was placed on 2026-09-25 and shipped on 2026-09-27 via UPS. The tracking number is 1Z999AA10198765432.\n\nBest regards,\nBrewline Coffee Support",
+      "judgement": {
+        "groundedness": {
+          "explanation": "All facts stated (order ID, placed date, shipped date, carrier, tracking number) match exactly what is in the context's order object.",
+          "score": 5
+        },
+        "tone": {
+          "explanation": "The reply is polite, concise, and directly answers the customer's question about order status without unnecessary filler.",
+          "score": 5
+        },
+        "policy_compliance": {
+          "explanation": "The resolution is 'informed' and the reply simply shares the shipping status and tracking info without making unauthorized promises, discounts, or timelines; no kb_articles were required since the list is empty.",
+          "score": 5
+        }
+      },
+      "error": null
+    },
+    {
+      "id": "status-processing",
+      "tests": "Still processing: say it hasn't shipped yet",
+      "expected": {
+        "intent": "order_status",
+        "verdict": "inform",
+        "resolution": "informed",
+        "kb_article": null
+      },
+      "intent": "order_status",
+      "verdict": "inform",
+      "resolution": "informed",
+      "status": "resolved",
+      "paused_for_review": false,
+      "retrieved_articles": [],
+      "cited_articles": [],
+      "reply": "Hi Grace, order #1047 is still processing and has not shipped yet. It’s for a Digital Brew Scale placed on 2026-09-28. I’m sorry, but I can’t confirm delivery by Friday.\n\nBest regards,\nBrewline Coffee Support",
+      "judgement": {
+        "groundedness": {
+          "explanation": "All facts (order status 'processing', item 'Digital Brew Scale', placed_on '2026-09-28', no shipping date) match the context exactly, with no invented details.",
+          "score": 5
+        },
+        "tone": {
+          "explanation": "The reply is polite, clear, concise, and directly answers the customer's question about shipping status and the Friday deadline, with an appropriate apology for the uncertainty.",
+          "score": 5
+        },
+        "policy_compliance": {
+          "explanation": "The reply sticks strictly to the 'informed' resolution, makes no promises about delivery timing, and doesn't reference internal rules or missing kb_articles (none were provided in context, so none needed to be cited).",
+          "score": 5
+        }
+      },
+      "error": null
+    },
+    {
+      "id": "status-freight-vip",
+      "tests": "Calm VIP asking for tracking: informed, not escalated",
+      "expected": {
+        "intent": "order_status",
+        "verdict": "inform",
+        "resolution": "informed",
+        "kb_article": null
+      },
+      "intent": "order_status",
+      "verdict": "inform",
+      "resolution": "informed",
+      "status": "resolved",
+      "paused_for_review": false,
+      "retrieved_articles": [],
+      "cited_articles": [],
+      "reply": "Hi Chloe,\n\nOrder #1048 has shipped. It contains a Duo Boiler Espresso Machine, was placed on 2026-09-11, and shipped on 2026-09-13. The carrier is FedEx Freight, and the tracking number is FXF-558120.\n\nBest regards,\nBrewline Coffee Support",
+      "judgement": {
+        "groundedness": {
+          "explanation": "All facts (order status, item, dates, carrier, tracking number) match exactly what is in the context; no invented details.",
+          "score": 5
+        },
+        "tone": {
+          "explanation": "The reply is polite, concise, and directly answers the tracking status question with all relevant details.",
+          "score": 5
+        },
+        "policy_compliance": {
+          "explanation": "The reply stays within the 'informed' resolution, makes no unauthorized promises, and doesn't reference internal rules; no kb_articles were provided to cite, so none were needed.",
+          "score": 5
+        }
+      },
+      "error": null
+    },
+    {
+      "id": "status-no-order-number",
+      "tests": "No order number: ask for it",
+      "expected": {
+        "intent": "order_status",
+        "verdict": "request_info",
+        "resolution": "need_more_info",
+        "kb_article": null
+      },
+      "intent": "order_status",
+      "verdict": "request_info",
+      "resolution": "need_more_info",
+      "status": "resolved",
+      "paused_for_review": false,
+      "retrieved_articles": [],
+      "cited_articles": [],
+      "reply": "Hi Farid, thanks for reaching out. I’m not able to locate your order without the order number. Please reply with your order number, and I’ll check the status for you.\n\nBest regards,\nBrewline Coffee Support",
+      "judgement": {
+        "groundedness": {
+          "explanation": "The reply makes no invented factual claims beyond what's in context—it simply states it cannot locate the order and asks for the order number, consistent with missing_info: 'order_number'.",
+          "score": 5
+        },
+        "tone": {
+          "explanation": "Polite, concise, and directly addresses the customer's request by explaining why more info is needed and what is required next.",
+          "score": 5
+        },
+        "policy_compliance": {
+          "explanation": "The reply correctly asks for exactly the missing information (order number), makes no promises about refunds, timelines, or shipping changes, and doesn't cite any internal rules or kb articles since none were provided.",
+          "score": 5
+        }
+      },
+      "error": null
+    },
+    {
+      "id": "address-before-shipment",
+      "tests": "Order still processing: address updated automatically",
+      "expected": {
+        "intent": "address_change",
+        "verdict": "auto_approve",
+        "resolution": "address_updated",
+        "kb_article": null
+      },
+      "intent": "address_change",
+      "verdict": "auto_approve",
+      "resolution": "address_updated",
+      "status": "resolved",
+      "paused_for_review": false,
+      "retrieved_articles": [],
+      "cited_articles": [],
+      "reply": "Hi Grace, your shipping address for order #1047 has been updated to 220 Newbury Street, Boston, MA 02116.\n\nBest regards,\nBrewline Coffee Support",
+      "judgement": {
+        "groundedness": {
+          "explanation": "All facts stated—order #1047, updated address to 220 Newbury Street, Boston, MA 02116—are directly supported by the context's 'resolution' and 'new_shipping_address' fields; no invented details.",
+          "score": 5
+        },
+        "tone": {
+          "explanation": "The reply is polite, concise, uses the customer's name, and directly confirms the requested action without unnecessary detail.",
+          "score": 5
+        },
+        "policy_compliance": {
+          "explanation": "The reply exactly matches the decided resolution (address_updated) with no extra promises, no internal rule mentions, and no KB citations needed since none were provided in context.",
+          "score": 5
+        }
+      },
+      "error": null
+    },
+    {
+      "id": "address-after-shipment",
+      "tests": "Already shipped: declined, carrier redirect offered",
+      "expected": {
+        "intent": "address_change",
+        "verdict": "deny",
+        "resolution": "denied",
+        "kb_article": null
+      },
+      "intent": "address_change",
+      "verdict": "deny",
+      "resolution": "denied",
+      "status": "resolved",
+      "paused_for_review": false,
+      "retrieved_articles": [],
+      "cited_articles": [],
+      "reply": "Hi Farid, thanks for reaching out. I’m sorry, but order #1046 was already shipped on 2026-09-28, so the delivery address can no longer be changed.\n\nBest regards,\nBrewline Coffee Support",
+      "judgement": {
+        "groundedness": {
+          "explanation": "The reply only states the shipped date (2026-09-28) and denial, both directly from context; no invented facts.",
+          "score": 5
+        },
+        "tone": {
+          "explanation": "Polite, empathetic ('I'm sorry'), concise and directly answers the request with a clear reason.",
+          "score": 5
+        },
+        "policy_compliance": {
+          "explanation": "Correctly denies the address change without offering unauthorized alternatives; no internal rule names or promises made. Could have added tracking info or suggested contacting the carrier, but this isn't required and no kb_articles were provided to cite.",
+          "score": 5
+        }
+      },
+      "error": null
+    },
+    {
+      "id": "address-missing",
+      "tests": "Wants a change but gives no address: ask for it",
+      "expected": {
+        "intent": "address_change",
+        "verdict": "request_info",
+        "resolution": "need_more_info",
+        "kb_article": null
+      },
+      "intent": "address_change",
+      "verdict": "request_info",
+      "resolution": "need_more_info",
+      "status": "resolved",
+      "paused_for_review": false,
+      "retrieved_articles": [],
+      "cited_articles": [],
+      "reply": "Hi Grace,\n\nThanks for reaching out. I can help with the address change for order #1047, but I still need your new shipping address. Please reply with the full updated address you’d like us to use.\n\nBest regards,\nBrewline Coffee Support",
+      "judgement": {
+        "groundedness": {
+          "explanation": "All facts stated (order #1047, address change request, need for missing address) align with the context; no invented details like tracking, refunds, or dates.",
+          "score": 5
+        },
+        "tone": {
+          "explanation": "Polite, clear, concise, and directly addresses the customer's request without unnecessary information.",
+          "score": 5
+        },
+        "policy_compliance": {
+          "explanation": "The reply correctly asks for exactly the missing information (new address) without promising any timeline or outcome, and doesn't reveal internal rules; no kb_articles were provided to cite, so omission is appropriate.",
+          "score": 5
+        }
+      },
+      "error": null
+    },
+    {
+      "id": "address-identity-mismatch",
+      "tests": "Changing someone else's shipping address: escalated",
+      "expected": {
+        "intent": "address_change",
+        "verdict": "escalate",
+        "resolution": "escalated",
+        "kb_article": null
+      },
+      "intent": "address_change",
+      "verdict": "escalate",
+      "resolution": "escalated",
+      "status": "escalated",
+      "paused_for_review": false,
+      "retrieved_articles": [],
+      "cited_articles": [],
+      "reply": "Hello,\n\nA specialist will follow up on your request to change the shipping address for order #1047.\n\nBest regards,\nBrewline Coffee Support",
+      "judgement": {
+        "groundedness": {
+          "explanation": "The reply only states that a specialist will follow up on the address change for order #1047, which matches the context's 'escalated' resolution with no other order details or promises invented.",
+          "score": 5
+        },
+        "tone": {
+          "explanation": "The message is polite and clear but very terse; it doesn't acknowledge any urgency around changing a shipping address before dispatch, which could reassure the customer.",
+          "score": 4
+        },
+        "policy_compliance": {
+          "explanation": "It correctly reflects the escalation without promising any specific outcome, timeline, or exposing internal escalation ID/priority, and there are no KB articles to cite since none were provided.",
+          "score": 5
+        }
+      },
+      "error": null
+    },
+    {
+      "id": "faq-uk-customs",
+      "tests": "International shipping and duties",
+      "expected": {
+        "intent": "product_question",
+        "verdict": "inform",
+        "resolution": "informed",
+        "kb_article": "KB-001"
+      },
+      "intent": "product_question",
+      "verdict": "inform",
+      "resolution": "informed",
+      "status": "resolved",
+      "paused_for_review": false,
+      "retrieved_articles": [
+        "KB-001",
+        "KB-014",
+        "KB-011"
+      ],
+      "cited_articles": [
+        "KB-001"
+      ],
+      "reply": "Hi, yes — we do ship to the UK. International orders ship with DHL Express and usually arrive in 5–9 business days. Import duties and taxes are calculated at checkout, so there shouldn’t be surprise fees on delivery.\n\nSee: International shipping [KB-001]\n\nBest regards,\nBrewline Coffee Support",
+      "judgement": {
+        "groundedness": {
+          "explanation": "All facts (UK shipping, DHL Express, 5-9 business days, duties calculated at checkout) are directly supported by KB-001 in the context; no invented details.",
+          "score": 5
+        },
+        "tone": {
+          "explanation": "The reply is polite, clear, concise, and directly answers both parts of the customer's question about shipping and customs fees.",
+          "score": 5
+        },
+        "policy_compliance": {
+          "explanation": "The reply matches the 'informed' resolution, makes no unauthorized promises, and properly cites the KB-001 article it relies on.",
+          "score": 5
+        }
+      },
+      "error": null
+    },
+    {
+      "id": "faq-return-opened",
+      "tests": "Returns policy for opened equipment",
+      "expected": {
+        "intent": "product_question",
+        "verdict": "inform",
+        "resolution": "informed",
+        "kb_article": "KB-003"
+      },
+      "intent": "product_question",
+      "verdict": "inform",
+      "resolution": "informed",
+      "status": "resolved",
+      "paused_for_review": false,
+      "retrieved_articles": [
+        "KB-003",
+        "KB-005",
+        "KB-008"
+      ],
+      "cited_articles": [
+        "KB-003"
+      ],
+      "reply": "Hello, yes — you can return an opened grinder within 30 days of delivery for a full refund. Opened coffee equipment is eligible for return. If an item is damaged or defective, it may be refunded without needing to be sent back.\n\nSee: Returns and refund policy [KB-003]\n\nBest regards,\nBrewline Coffee Support",
+      "judgement": {
+        "groundedness": {
+          "explanation": "All facts stated (30-day window, opened equipment eligible, damaged/defective refunded without return) directly match KB-003 content with no invented details.",
+          "score": 5
+        },
+        "tone": {
+          "explanation": "Polite, clear, concise, and directly answers the customer's question without unnecessary content.",
+          "score": 5
+        },
+        "policy_compliance": {
+          "explanation": "Reply correctly reflects the 'informed' resolution by providing accurate policy information and citing KB-003, without making unauthorized promises or including internal notes; it does not need to ask for missing info since none was required.",
+          "score": 5
+        }
+      },
+      "error": null
+    },
+    {
+      "id": "faq-unanswerable-fair-trade",
+      "tests": "No article covers certifications: a human should answer",
+      "expected": {
+        "intent": "product_question",
+        "verdict": "escalate",
+        "resolution": "escalated",
+        "kb_article": null
+      },
+      "intent": "product_question",
+      "verdict": "escalate",
+      "resolution": "escalated",
+      "status": "escalated",
+      "paused_for_review": false,
+      "retrieved_articles": [
+        "KB-011",
+        "KB-003",
+        "KB-005"
+      ],
+      "cited_articles": [],
+      "reply": "Hi, thanks for reaching out. A specialist will follow up with you about our coffee bean certifications.\n\nBest regards,\nBrewline Coffee Support",
+      "judgement": {
+        "groundedness": {
+          "explanation": "The reply only states that a specialist will follow up, which matches the context's resolution of 'escalated' with no invented facts about certifications, dates, or policies.",
+          "score": 5
+        },
+        "tone": {
+          "explanation": "The reply is polite and concise, appropriately acknowledging the question without over-promising, though it could be slightly warmer given the customer's direct question.",
+          "score": 4
+        },
+        "policy_compliance": {
+          "explanation": "The reply correctly reflects the escalation resolution without hinting at any refund, discount, or specific answer about fair trade certification, and there are no kb_articles to cite since none were provided.",
+          "score": 5
+        }
+      },
+      "error": null
+    },
+    {
+      "id": "complaint-angry-vip",
+      "tests": "Angry VIP chasing a late freight delivery: high-priority escalation",
+      "expected": {
+        "intent": "complaint",
+        "verdict": "escalate",
+        "resolution": "escalated",
+        "kb_article": null
+      },
+      "intent": "order_status",
+      "verdict": "inform",
+      "resolution": "informed",
+      "status": "resolved",
+      "paused_for_review": false,
+      "retrieved_articles": [],
+      "cited_articles": [],
+      "reply": "Hi Chloe, I’m sorry for the frustration. Order #1048 has shipped: the Duo Boiler Espresso Machine was shipped on 2026-09-13 via FedEx Freight, and the tracking number is FXF-558120. I’m not able to confirm delivery yet from the information available here.\n\nBest regards,\nBrewline Coffee Support",
+      "judgement": {
+        "groundedness": {
+          "explanation": "All facts (order id, item, ship date, carrier, tracking number, delivery status) match the context exactly with no invented details.",
+          "score": 5
+        },
+        "tone": {
+          "explanation": "The reply opens with an empathetic apology for the frustration and clearly answers the order status question in a concise manner, appropriate for an upset customer.",
+          "score": 5
+        },
+        "policy_compliance": {
+          "explanation": "The reply sticks strictly to the 'informed' resolution, provides only factual status info, makes no promises about refunds or timelines, and doesn't reference internal rules; no kb_articles were provided so none were needed to cite.",
+          "score": 5
+        }
+      },
+      "error": null
+    },
+    {
+      "id": "complaint-chargeback-threat",
+      "tests": "Threatens a bank dispute: urgent, escalated",
+      "expected": {
+        "intent": "complaint",
+        "verdict": "escalate",
+        "resolution": "escalated",
+        "kb_article": null
+      },
+      "intent": "complaint",
+      "verdict": "escalate",
+      "resolution": "escalated",
+      "status": "escalated",
+      "paused_for_review": false,
+      "retrieved_articles": [],
+      "cited_articles": [],
+      "reply": "Hi Anna, I'm sorry for the frustration. I’ve escalated your case as high priority, and a specialist will follow up with you.\n\nBest regards,\nBrewline Coffee Support",
+      "judgement": {
+        "groundedness": {
+          "explanation": "The reply only states facts present in context: escalation created and high priority, which matches the resolution and escalation object exactly. No invented order, refund, or timeline details.",
+          "score": 5
+        },
+        "tone": {
+          "explanation": "The reply is polite, empathetic ('I'm sorry for the frustration'), concise, and directly addresses the customer's complaint about lack of response, appropriately acknowledging the escalation.",
+          "score": 5
+        },
+        "policy_compliance": {
+          "explanation": "The reply matches the decided resolution ('escalated', priority high) without promising refunds, discounts, or specific timelines, and doesn't reveal internal rule names or operator details; since kb_articles is empty, no citation was needed.",
+          "score": 5
+        }
+      },
+      "error": null
+    },
+    {
+      "id": "complaint-mild-feedback",
+      "tests": "Calm feedback without a request: acknowledge, no escalation",
+      "expected": {
+        "intent": "complaint",
+        "verdict": "inform",
+        "resolution": "informed",
+        "kb_article": null
+      },
+      "intent": "complaint",
+      "verdict": "inform",
+      "resolution": "informed",
+      "status": "resolved",
+      "paused_for_review": false,
+      "retrieved_articles": [],
+      "cited_articles": [],
+      "reply": "Hi Grace, thanks for the feedback. We’re sorry the packaging included so much plastic filler. We’ll pass your note along to the team as we continue looking for ways to reduce packaging waste.\n\nBest regards,\nBrewline Coffee Support",
+      "judgement": {
+        "groundedness": {
+          "explanation": "The reply contains no fabricated facts, no order details, refunds, or policy claims—just an acknowledgment and a general statement about passing feedback, which is consistent with the 'informed' resolution and empty context.",
+          "score": 5
+        },
+        "tone": {
+          "explanation": "The reply is polite, empathetic ('We're sorry the packaging included so much plastic filler'), concise, and directly addresses the customer's feedback about packaging.",
+          "score": 5
+        },
+        "policy_compliance": {
+          "explanation": "The reply matches the 'informed' resolution without promising any specific changes, refunds, or timelines; it makes a soft commitment to 'pass your note along' which is a reasonable acknowledgment rather than a concrete promise, and no internal rules or kb articles were needed since none were provided.",
+          "score": 5
+        }
+      },
+      "error": null
+    },
+    {
+      "id": "other-account-deletion",
+      "tests": "Privacy request: not automated, routed to a human",
+      "expected": {
+        "intent": "other",
+        "verdict": "escalate",
+        "resolution": "escalated",
+        "kb_article": null
+      },
+      "intent": "other",
+      "verdict": "escalate",
+      "resolution": "escalated",
+      "status": "escalated",
+      "paused_for_review": false,
+      "retrieved_articles": [],
+      "cited_articles": [],
+      "reply": "Hi Anna, thanks for reaching out. I’ve escalated your request to a specialist, and they’ll follow up with you directly about deleting your account and personal data.\n\nBest regards,\nBrewline Coffee Support",
+      "judgement": {
+        "groundedness": {
+          "explanation": "The reply only states facts present in the context (escalation occurred, specialist will follow up), with no invented details like timelines or order specifics.",
+          "score": 5
+        },
+        "tone": {
+          "explanation": "The reply is polite, concise, and directly addresses the customer's request without unnecessary information.",
+          "score": 5
+        },
+        "policy_compliance": {
+          "explanation": "The reply correctly reflects the 'escalated' resolution without promising a specific outcome, timeline, or deletion confirmation, and does not reference internal rule names or operators; no kb_articles were provided to cite, which is consistent with the empty context field.",
+          "score": 5
+        }
+      },
+      "error": null
+    },
+    {
+      "id": "other-wholesale",
+      "tests": "Sales lead: not a support request, routed to a human",
+      "expected": {
+        "intent": "other",
+        "verdict": "escalate",
+        "resolution": "escalated",
+        "kb_article": null
+      },
+      "intent": "product_question",
+      "verdict": "inform",
+      "resolution": "informed",
+      "status": "resolved",
+      "paused_for_review": false,
+      "retrieved_articles": [
+        "KB-011",
+        "KB-003",
+        "KB-015"
+      ],
+      "cited_articles": [
+        "KB-011"
+      ],
+      "reply": "Hi there, thanks for reaching out. We can help with bean subscriptions, which ship every 2, 4 or 6 weeks. You can pause, skip a delivery, change the roast, or cancel any time from the Subscriptions page of your account. Changes made before the renewal date apply to the next shipment. If you were looking for a different kind of wholesale request, please share more details and we can take a look.\n\nSee: Coffee bean subscriptions [KB-011]\n\nBest regards,\nBrewline Coffee Support",
+      "judgement": {
+        "groundedness": {
+          "explanation": "The reply's factual claims about subscriptions match KB-011 exactly, with no invented details.",
+          "score": 5
+        },
+        "tone": {
+          "explanation": "The reply is polite and clear, but it fails to actually address the customer's wholesale pricing question, instead redirecting to an unrelated subscription topic and asking them to clarify, which doesn't feel responsive to what was asked.",
+          "score": 2
+        },
+        "policy_compliance": {
+          "explanation": "The resolution was simply 'informed' with no specific wholesale info available, and the reply doesn't invent pricing or promises, correctly citing KB-011; however, offering irrelevant subscription info as the primary answer to a wholesale inquiry is a mismatched response, though it does ask for more details appropriately.",
+          "score": 3
+        }
+      },
+      "error": null
+    }
+  ]
+}

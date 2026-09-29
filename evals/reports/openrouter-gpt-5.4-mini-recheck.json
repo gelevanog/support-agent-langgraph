@@ -1,0 +1,241 @@
+{
+  "generated_at": "2026-09-29T11:23:01.227554Z",
+  "dataset": "evals/tickets.jsonl",
+  "agent_provider": "openrouter/openai/gpt-5.4-mini",
+  "judge": "openrouter/anthropic/claude-sonnet-5",
+  "embeddings": "openrouter/openai/text-embedding-3-small/1536d",
+  "kb_backend": "memory",
+  "usage": {
+    "agent": {
+      "model": "openrouter/openai/gpt-5.4-mini",
+      "calls": 16,
+      "input_tokens": 9759,
+      "output_tokens": 774,
+      "cost_usd": 0.010802
+    },
+    "judge": {
+      "model": "openrouter/anthropic/claude-sonnet-5",
+      "calls": 4,
+      "input_tokens": 7946,
+      "output_tokens": 882,
+      "cost_usd": 0.024712
+    }
+  },
+  "metrics": {
+    "intent_accuracy": {
+      "correct": 4,
+      "total": 4,
+      "value": 1.0
+    },
+    "intent_recall": {
+      "order_status": {
+        "correct": 1,
+        "total": 1,
+        "value": 1.0
+      },
+      "complaint": {
+        "correct": 2,
+        "total": 2,
+        "value": 1.0
+      },
+      "other": {
+        "correct": 1,
+        "total": 1,
+        "value": 1.0
+      }
+    },
+    "confusion": {
+      "order_status": {
+        "order_status": 1
+      },
+      "complaint": {
+        "complaint": 2
+      },
+      "other": {
+        "other": 1
+      }
+    },
+    "verdict_accuracy": {
+      "correct": 4,
+      "total": 4,
+      "value": 1.0
+    },
+    "resolution_accuracy": {
+      "correct": 4,
+      "total": 4,
+      "value": 1.0
+    },
+    "kb_hit_rate": {
+      "correct": 0,
+      "total": 0,
+      "value": 0.0
+    },
+    "kb_top1": {
+      "correct": 0,
+      "total": 0,
+      "value": 0.0
+    },
+    "kb_cited": {
+      "correct": 0,
+      "total": 0,
+      "value": 0.0
+    },
+    "reply_quality": {
+      "judged": 4,
+      "mean_scores": {
+        "groundedness": 5.0,
+        "tone": 5.0,
+        "policy_compliance": 5.0
+      },
+      "passing": {
+        "correct": 4,
+        "total": 4,
+        "value": 1.0
+      }
+    },
+    "all_checks_passed": {
+      "correct": 4,
+      "total": 4,
+      "value": 1.0
+    },
+    "errors": 0
+  },
+  "results": [
+    {
+      "id": "status-freight-vip",
+      "tests": "Calm VIP asking for tracking: informed, not escalated",
+      "expected": {
+        "intent": "order_status",
+        "verdict": "inform",
+        "resolution": "informed",
+        "kb_article": null
+      },
+      "intent": "order_status",
+      "verdict": "inform",
+      "resolution": "informed",
+      "status": "resolved",
+      "paused_for_review": false,
+      "retrieved_articles": [],
+      "cited_articles": [],
+      "reply": "Hi Chloe, order #1048 has shipped. It was placed on 2026-09-11 and shipped on 2026-09-13 via FedEx Freight. The tracking number is FXF-558120.\n\nBest regards,\nBrewline Coffee Support",
+      "judgement": {
+        "groundedness": {
+          "explanation": "All facts (order id, status, dates, carrier, tracking number) match exactly what's in the context; no invented details.",
+          "score": 5
+        },
+        "tone": {
+          "explanation": "Polite, clear, concise, and directly answers the tracking status question asked.",
+          "score": 5
+        },
+        "policy_compliance": {
+          "explanation": "Reply matches the 'informed' resolution with no unauthorized promises, no internal rule mentions, and no missing info to request; kb_articles list is empty so no citation was needed.",
+          "score": 5
+        }
+      },
+      "error": null
+    },
+    {
+      "id": "complaint-angry-vip",
+      "tests": "Angry VIP chasing a late freight delivery: high-priority escalation",
+      "expected": {
+        "intent": "complaint",
+        "verdict": "escalate",
+        "resolution": "escalated",
+        "kb_article": null
+      },
+      "intent": "complaint",
+      "verdict": "escalate",
+      "resolution": "escalated",
+      "status": "escalated",
+      "paused_for_review": false,
+      "retrieved_articles": [],
+      "cited_articles": [],
+      "reply": "Hi Chloe, I’m sorry for the frustration with order #1048. I’ve escalated this as a high-priority case, and a specialist will follow up with you directly about the shipment status and next steps. The order was shipped on 2026-09-13 via FedEx Freight, tracking number FXF-558120.\n\nBest regards,\nBrewline Coffee Support",
+      "judgement": {
+        "groundedness": {
+          "explanation": "All facts (shipped date, carrier, tracking number, escalation status) match the context exactly; no invented details.",
+          "score": 5
+        },
+        "tone": {
+          "explanation": "The reply is empathetic ('I'm sorry for the frustration'), concise, and directly addresses the complaint by confirming escalation and providing shipment details.",
+          "score": 5
+        },
+        "policy_compliance": {
+          "explanation": "The reply correctly reflects the 'escalated' resolution without promising refunds, discounts, or specific timelines, and doesn't reveal internal rule names or operator notes; no KB articles were needed since none were provided.",
+          "score": 5
+        }
+      },
+      "error": null
+    },
+    {
+      "id": "complaint-mild-feedback",
+      "tests": "Calm feedback without a request: acknowledge, no escalation",
+      "expected": {
+        "intent": "complaint",
+        "verdict": "inform",
+        "resolution": "informed",
+        "kb_article": null
+      },
+      "intent": "complaint",
+      "verdict": "inform",
+      "resolution": "informed",
+      "status": "resolved",
+      "paused_for_review": false,
+      "retrieved_articles": [],
+      "cited_articles": [],
+      "reply": "Hi Grace, thank you for sharing this feedback. We’re sorry the packaging included so much plastic filler. We’ve passed your comments along to the team, and we appreciate you taking the time to help us improve.\n\nBest regards,\nBrewline Coffee Support",
+      "judgement": {
+        "groundedness": {
+          "explanation": "No fabricated order details, dates, or policy facts; the reply only references the customer's own feedback, which is consistent with the context (no order data needed).",
+          "score": 5
+        },
+        "tone": {
+          "explanation": "Polite, empathetic, concise, and directly acknowledges the feedback without overpromising action.",
+          "score": 5
+        },
+        "policy_compliance": {
+          "explanation": "Matches the 'informed' resolution by simply acknowledging feedback without promising specific changes, refunds, or timelines; no internal notes or invented commitments are included, and no KB citation was needed since none were provided.",
+          "score": 5
+        }
+      },
+      "error": null
+    },
+    {
+      "id": "other-wholesale",
+      "tests": "Sales lead: not a support request, routed to a human",
+      "expected": {
+        "intent": "other",
+        "verdict": "escalate",
+        "resolution": "escalated",
+        "kb_article": null
+      },
+      "intent": "other",
+      "verdict": "escalate",
+      "resolution": "escalated",
+      "status": "escalated",
+      "paused_for_review": false,
+      "retrieved_articles": [
+        "KB-011",
+        "KB-003",
+        "KB-015"
+      ],
+      "cited_articles": [],
+      "reply": "Hi, thanks for reaching out. I’ve escalated your request to a specialist, and someone from our team will follow up with you about wholesale pricing for your cafe.\n\nBest regards,\nBrewline Coffee Support",
+      "judgement": {
+        "groundedness": {
+          "explanation": "The reply only states that the request has been escalated and a specialist will follow up, which matches the context's resolution of 'escalated'. No invented facts, order details, or promises beyond what's in the context.",
+          "score": 5
+        },
+        "tone": {
+          "explanation": "The reply is polite, concise, and directly addresses the customer's wholesale inquiry without unnecessary elaboration or missing the point of the request.",
+          "score": 5
+        },
+        "policy_compliance": {
+          "explanation": "The reply correctly reflects the 'escalated' resolution without promising specific pricing, timelines, or discounts, and doesn't mention internal rule names or operators. However, it does not cite any help-center articles, though in this case the KB article (KB-011 on subscriptions) is unrelated to the wholesale inquiry, so citation isn't needed here.",
+          "score": 5
+        }
+      },
+      "error": null
+    }
+  ]
+}

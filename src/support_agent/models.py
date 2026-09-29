@@ -90,9 +90,11 @@ class TicketAnalysis(BaseModel):
         description=(
             "Primary intent. refund_request: wants money back or to return an item. "
             "address_change: wants to change the shipping address. order_status: asks where an "
-            "order is or when it arrives. product_question: general question about products, "
-            "shipping or policies. complaint: expresses dissatisfaction without a concrete request "
-            "we can execute. other: anything else."
+            "order is or when it arrives. product_question: general question a help-center article "
+            "could answer (products, shipping, returns, payments, policies). complaint: expresses "
+            "dissatisfaction with the store or its service without a concrete request we can "
+            "execute, including angrily chasing an order they have already asked about. other: "
+            "anything else, e.g. wholesale, sales or partnership inquiries and account or data requests."
         )
     )
     urgency: Urgency = Field(
