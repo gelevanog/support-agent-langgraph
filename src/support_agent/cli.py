@@ -29,7 +29,11 @@ from support_agent.service import InvalidTicketStateError, TicketNotFoundError, 
 from support_agent.tools import StoreClient, build_store_tools
 from support_agent.tracing import configure_tracing
 
-app = typer.Typer(help="Support Autopilot: resolve support tickets with an AI agent.", no_args_is_help=True)
+app = typer.Typer(
+    help="Support Autopilot: resolve support tickets with an AI agent.",
+    no_args_is_help=True,
+    pretty_exceptions_show_locals=False,  # locals would include clients holding API keys
+)
 console = Console(highlight=False)
 
 T = TypeVar("T")

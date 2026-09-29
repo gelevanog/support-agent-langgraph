@@ -9,6 +9,7 @@ from fastapi import APIRouter, Body, Depends, Query, Request, status
 from pydantic import BaseModel, Field
 
 from support_agent import __version__
+from support_agent.llm import model_label
 from support_agent.models import TicketIn, TicketStatus
 from support_agent.runtime import Runtime
 from support_agent.service import TicketService, TicketView
@@ -32,6 +33,7 @@ class HealthResponse(BaseModel):
     status: str
     version: str
     llm_provider: str
+    llm_model: str
     tickets_by_status: dict[str, int]
 
 
@@ -64,6 +66,7 @@ async def health(runtime: Annotated[Runtime, Depends(get_runtime)]) -> HealthRes
         status="ok",
         version=__version__,
         llm_provider=runtime.settings.llm_provider,
+        llm_model=model_label(runtime.settings),
         tickets_by_status=counts,
     )
 

@@ -1,7 +1,8 @@
-"""Embedding models: OpenAI, or deterministic hashing embeddings that need no model and no network.
+"""Embedding models: OpenAI, OpenRouter, or deterministic hashing embeddings (no model, no network).
 
 Anthropic does not offer an embeddings API, so `EMBEDDINGS_PROVIDER` is independent of
-`LLM_PROVIDER`: Claude can classify and draft while OpenAI embeddings power retrieval. Any other
+`LLM_PROVIDER`: Claude can classify and draft while OpenAI embeddings power retrieval. OpenRouter
+serves OpenAI, Google, Mistral and open-weight embedding models behind one key. Any other
 LangChain `Embeddings` implementation (Voyage, Cohere, a local model) plugs in the same way.
 """
 
@@ -120,3 +121,22 @@ def build_embedding_model(settings: Settings) -> EmbeddingModel:
             if settings.openai_api_key:
                 kwargs["api_key"] = settings.openai_api_key
             return EmbeddingModel(OpenAIEmbeddings(**kwargs), f"openai/{settings.openai_embeddings_model}", dimensions)
+        case "openrouter":
+            from langchain_openai import OpenAIEmbeddings
+
+            from support_agent.llm.factory import OPENROUTER_HEADERS
+
+            kwargs = {
+                "model": settings.openrouter_embeddings_model,
+                "base_url": settings.openrouter_base_url,
+                "dimensions": dimensions,
+                # Send plain text: the default pre-tokenizes with tiktoken, which only OpenAI accepts.
+                "check_embedding_ctx_length": False,
+                "timeout": settings.llm_timeout_seconds,
+                "max_retries": 2,
+                "default_headers": OPENROUTER_HEADERS,
+            }
+            if settings.openrouter_api_key:
+                kwargs["api_key"] = settings.openrouter_api_key
+            name = f"openrouter/{settings.openrouter_embeddings_model}"
+            return EmbeddingModel(OpenAIEmbeddings(**kwargs), name, dimensions)

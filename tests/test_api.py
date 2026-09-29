@@ -28,6 +28,7 @@ def test_health(client: TestClient) -> None:
     body = client.get("/health").json()
     assert body["status"] == "ok"
     assert body["llm_provider"] == "fake"
+    assert body["llm_model"] == "fake"
 
 
 def test_submit_and_get_ticket(client: TestClient) -> None:
