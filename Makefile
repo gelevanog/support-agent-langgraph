@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help install dev test lint format typecheck demo graph docker-build docker-up clean
+.PHONY: help install dev test lint format typecheck demo eval graph docker-build docker-up clean
 
 help:  ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
@@ -24,6 +24,9 @@ format:  ## Auto-format and fix lint issues
 
 demo:  ## Run all demo tickets through the agent and print a summary
 	uv run python -m support_agent.cli demo
+
+eval:  ## Run the labelled eval tickets (fake agent + fake judge unless configured otherwise)
+	uv run python -m support_agent.evals
 
 graph:  ## Print the LangGraph graph as Mermaid
 	uv run python -m support_agent.cli graph

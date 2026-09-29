@@ -11,6 +11,7 @@ from langchain_anthropic import ChatAnthropic
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 
 from support_agent.config import LLMProvider, Settings
+from support_agent.evals.judge import build_judge_model, judge_settings
 from support_agent.knowledge import build_embedding_model
 from support_agent.llm import FakeSupportModel, build_chat_model, model_label
 from support_agent.llm.factory import OPENROUTER_HEADERS
@@ -52,6 +53,17 @@ def test_every_provider_builds_and_is_labelled(provider: LLMProvider, cls: type,
     configured = settings(llm_provider=provider)
     assert isinstance(build_chat_model(configured), cls)
     assert model_label(configured) == label
+
+
+def test_judge_can_use_a_different_openrouter_model_than_the_agent() -> None:
+    agent = settings(llm_provider="openrouter", openrouter_model="openai/gpt-5.4-mini")
+    judge = build_judge_model("openrouter", agent, "anthropic/claude-sonnet-5")
+    assert isinstance(judge, ChatOpenAI)
+    assert judge.model_name == "anthropic/claude-sonnet-5"
+    assert model_label(judge_settings("openrouter", agent, "anthropic/claude-sonnet-5")) == (
+        "openrouter/anthropic/claude-sonnet-5"
+    )
+    assert model_label(agent) == "openrouter/openai/gpt-5.4-mini"  # the agent's settings are untouched
 
 
 def test_openrouter_embeddings_send_plain_text_to_openrouter() -> None:

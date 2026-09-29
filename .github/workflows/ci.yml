@@ -79,6 +79,35 @@ jobs:
           name: junit-report
           path: report.xml
 
+  eval:
+    name: Eval smoke (fake agent + fake judge)
+    runs-on: ubuntu-latest
+    env:
+      LLM_PROVIDER: fake
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.2.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: uv sync --frozen --all-extras
+
+      - name: Run the labelled eval tickets
+        run: uv run python -m support_agent.evals --output eval-report.json --fail-under 0.85
+
+      - name: Upload eval report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: eval-report
+          path: eval-report.json
+
   build:
     name: Docker build
     runs-on: ubuntu-latest
